@@ -11,7 +11,7 @@
 #include <math.h>
 #include "usec_time.h"
 
-float state_start_time;
+static float state_start_time;
 
 //static variables only used for initialization
 static bool first_run = true;
