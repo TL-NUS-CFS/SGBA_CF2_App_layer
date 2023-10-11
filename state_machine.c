@@ -46,9 +46,9 @@ float height;
 static bool taken_off = false;
 static float nominal_height = 0.3;
 
-// Switch to multiple methods, that increases in complexity 
-//1= wall_following: Go forward and follow walls with the multiranger 
-//2=wall following with avoid: This also follows walls but will move away if another crazyflie with an lower ID is coming close, 
+// Switch to multiple methods, that increases in complexity
+//1= wall_following: Go forward and follow walls with the multiranger
+//2=wall following with avoid: This also follows walls but will move away if another crazyflie with an lower ID is coming close,
 //3=SGBA: The SGBA method that incorperates the above methods.
 //        NOTE: the switching between outbound and inbound has not been implemented yet
 #define METHOD 1
@@ -79,7 +79,8 @@ static int state;
 static int state_wf;
 #endif
 static float up_range_filtered;
-static int varid;
+static logVarId_t varid;
+static paramVarId_t paramid;
 //static bool manual_startup = false;
 static bool on_the_ground = true;
 //static uint32_t time_stamp_manual_startup_command = 0;
@@ -243,10 +244,10 @@ void appMain(void *param)
     rssi_inter_filtered =  (uint8_t)update_median_filter_f(&medFilt_2, (float)rssi_inter_closest);
 
     //checking init of multiranger and flowdeck
-    varid = paramGetVarId("deck", "bcMultiranger");
-    uint8_t multiranger_isinit=paramGetInt(varid);
-    varid = paramGetVarId("deck", "bcFlow2");
-    uint8_t flowdeck_isinit=paramGetUint(varid);
+    paramid = paramGetVarId("deck", "bcMultiranger");
+    uint8_t multiranger_isinit=paramGetInt(paramid);
+    paramid = paramGetVarId("deck", "bcFlow2");
+    uint8_t flowdeck_isinit=paramGetUint(paramid);
 
     // get current height and heading
     varid = logGetVarId("kalman", "stateZ");
