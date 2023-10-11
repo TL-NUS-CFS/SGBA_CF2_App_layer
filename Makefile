@@ -1,12 +1,4 @@
-# enable app support
-APP=1
-APP_STACKSIZE=300
+CRAZYFLIE_BASE=$(PWD)/crazyflie-firmware
+include $(CRAZYFLIE_BASE)/tools/make/oot.mk
 
-VPATH += .
-PROJ_OBJ += state_machine.o
-PROJ_OBJ += wallfollowing_multiranger_onboard.o
-PROJ_OBJ += wallfollowing_with_avoid.o
-PROJ_OBJ += SGBA.o
-
-CRAZYFLIE_BASE= crazyflie-firmware
-include $(CRAZYFLIE_BASE)/Makefile
+OOT_CONFIG := $(PWD)/app-config
