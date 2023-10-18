@@ -17,7 +17,14 @@ Make sure your crazyflie has the newest NRF firmware with bluetooth disabled! (h
 
 #### Clone this repo
 
-```git clone --recurse-submodules -j8 git://github.com/THISREPO.git```
+```
+git clone --recursive https://github.com/thisRepoAddress
+cd SGBA_CF2_App_layer/
+git checkout dev/compilable
+git submodule sync
+git submodule init
+git submodule update  --recursive
+```
 
 #### Build and flash
 Make sure to do this in the directory of the applayer (this repo) and not the directory of the crazyflie firmware)
