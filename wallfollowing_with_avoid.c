@@ -11,7 +11,7 @@
 #include <math.h>
 #include "usec_time.h"
 
-float state_start_time;
+static float state_start_time;
 
 //static variables only used for initialization
 static bool first_run = true;
@@ -38,7 +38,7 @@ void init_wall_follower_and_avoid_controller(float new_ref_distance_from_wall, f
 }
 
 
-int wall_follower_and_avoid_controller(float *vel_x, float *vel_y, float *vel_w, float front_range, float left_range,
+int wall_follower_and_avoid_controller(float *vel_x, float *vel_y, float *vel_w, float *height, float front_range, float left_range,
         float right_range,  float current_heading, uint8_t rssi_other_drone)
 {
 
@@ -80,7 +80,7 @@ int wall_follower_and_avoid_controller(float *vel_x, float *vel_y, float *vel_w,
         }
     } else if (state == 3) { //MOVE_OUT_OF_WAY
         if (rssi_other_drone > rssi_collision_threshold) {
-            state = transition(1);
+            state = transition(2);
         }
 
     }
@@ -91,6 +91,7 @@ int wall_follower_and_avoid_controller(float *vel_x, float *vel_y, float *vel_w,
     float temp_vel_x = 0;
     float temp_vel_y = 0;
     float temp_vel_w = 0;
+    float temp_height = 0;
 
     if (state == 1) {        //FORWARD
         // forward max speed
@@ -104,22 +105,16 @@ int wall_follower_and_avoid_controller(float *vel_x, float *vel_y, float *vel_w,
             wall_follower(&temp_vel_x, &temp_vel_y, &temp_vel_w, front_range, left_range, current_heading, local_direction);
         }
     } else if (state == 3) {       //MOVE_OUT_OF_WAY
-
         float save_distance = 0.7f;
-        if (left_range < save_distance) {
-            temp_vel_y = temp_vel_y - 0.5f;
-        }
-        if (right_range < save_distance) {
-            temp_vel_y = temp_vel_y + 0.5f;
-        }
-        if (front_range < save_distance) {
-            temp_vel_x = temp_vel_x - 0.5f;
+        if (left_range < save_distance || right_range < save_distance || front_range < save_distance) {
+            temp_height = *height + 0.4f;
         }
     }
 
     *vel_x = temp_vel_x;
     *vel_y = temp_vel_y;
     *vel_w = temp_vel_w;
+    *height = temp_height;
 
     return state;
 }

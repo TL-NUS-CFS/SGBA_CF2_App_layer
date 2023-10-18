@@ -357,7 +357,7 @@ void appMain(void *param)
             rssi_inter_filtered = 140;
         }
 
-        state = wall_follower_and_avoid_controller(&vel_x_cmd, &vel_y_cmd, &vel_w_cmd, front_range, left_range, right_range,
+        state = wall_follower_and_avoid_controller(&vel_x_cmd, &vel_y_cmd, &vel_w_cmd, &height, left_range, right_range,
                 heading_rad, rssi_inter_filtered);
 #endif
 #if METHOD==3 // SwWARM GRADIENT BUG ALGORITHM
