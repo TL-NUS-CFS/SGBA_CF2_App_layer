@@ -7,6 +7,7 @@
 #include "SGBA.h"
 #include "wallfollowing_multiranger_onboard.h"
 
+#define __USE_MISC
 #include <math.h>
 #include <stdlib.h>
 
