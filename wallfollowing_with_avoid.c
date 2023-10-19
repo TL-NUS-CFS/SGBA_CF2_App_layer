@@ -7,6 +7,7 @@
 
 #include "wallfollowing_multiranger_onboard.h"
 #include "wallfollowing_with_avoid.h"
+#include "drone_variables.h"
 
 #include <math.h>
 #include "usec_time.h"
@@ -46,7 +47,7 @@ int wall_follower_and_avoid_controller(float *vel_x, float *vel_y, float *vel_w,
 
     // Initalize static variables
     static int state = 1;
-    static int rssi_collision_threshold = 60;
+    // static int rssi_collision_threshold = 60;
 
     // if it is reinitialized
     if (first_run) {

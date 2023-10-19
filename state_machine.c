@@ -25,6 +25,7 @@
 #include "estimator_kalman.h"
 #include "stabilizer.h"
 
+#include "drone_variables.h"
 #include "wallfollowing_multiranger_onboard.h"
 #include "wallfollowing_with_avoid.h"
 #include "SGBA.h"
@@ -411,13 +412,13 @@ void appMain(void *param)
 
 
 #if METHOD==1 // wall following
-          wall_follower_init(0.6, 0.3, 1);
+          wall_follower_init(drone_dist_from_wall, drone_speed, 1);
 #endif
 #if METHOD==2 // wallfollowing with avoid
           if (my_id%2==1)
-          init_wall_follower_and_avoid_controller(0.6, 0.3, -1);
+          init_wall_follower_and_avoid_controller(drone_dist_from_wall, drone_speed, -1);
           else
-          init_wall_follower_and_avoid_controller(0.6, 0.3, 1);
+          init_wall_follower_and_avoid_controller(drone_dist_from_wall, drone_speed, 1);
 
 #endif
 #if METHOD==3 // Swarm Gradient Bug Algorithm
