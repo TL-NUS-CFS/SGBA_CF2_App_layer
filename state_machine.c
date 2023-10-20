@@ -406,7 +406,7 @@ void appMain(void *param)
 
 
 #if METHOD==1 // wall following
-          wall_follower_init(0.4, 0.5, 1);
+          wall_follower_init(0.8, 0.1, 1);
 #endif
 #if METHOD==2 // wallfollowing with avoid
           if (my_id%2==1)
@@ -485,13 +485,28 @@ void p2pcallbackHandler(P2PPacket *p)
     id_inter_ext = p->data[0];
 
 
-    if (id_inter_ext == 0x63)
+    if (id_inter_ext == 0x63) 
     {
-        // rssi_beacon =rssi_inter;
-        keep_flying =  p->data[1];
-    }else if(id_inter_ext == 0x64){
-        rssi_beacon =p->rssi;
+        // get the drone's ID
+        uint64_t address = configblockGetRadioAddress(); 
+        uint8_t my_id =(uint8_t)((address) & 0x00000000ff); 
 
+        //if 3rd byte of packet = 0xff or = drone's ID
+        if (p->data[2] == 0xff || p->data[2] == my_id) 
+        {
+         keep_flying =  p->data[1]; 
+        }
+
+        // if (p->data[2] == my_id){
+        //   keep_flying = !keep_flying; 
+        // }
+        // else{
+        //   keep_flying =  p->data[1];
+        // }
+
+
+    }else if(id_inter_ext == 0x64){ 
+        rssi_beacon =p->rssi;
     }
     else{
         rssi_inter = p->rssi;
