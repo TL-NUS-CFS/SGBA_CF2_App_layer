@@ -7,7 +7,7 @@
 
 #include "wallfollowing_multiranger_onboard.h"
 #include "wallfollowing_with_avoid.h"
-#include "drone_variables.h"
+// #include "drone_variables.h"
 
 #include <math.h>
 #include "usec_time.h"
@@ -41,7 +41,7 @@ void init_wall_follower_and_avoid_controller(float new_ref_distance_from_wall, f
 }
 
 
-int wall_follower_and_avoid_controller(float *vel_x, float *vel_y, float *vel_w, float front_range, float left_range,
+int wall_follower_and_avoid_controller(float *vel_x, float *vel_y, float *vel_w, float *height, float front_range, float left_range,
         float right_range,  float current_heading, uint8_t rssi_other_drone)
 {
 
@@ -95,6 +95,7 @@ int wall_follower_and_avoid_controller(float *vel_x, float *vel_y, float *vel_w,
     float temp_vel_x = 0;
     float temp_vel_y = 0;
     float temp_vel_w = 0;
+    float temp_height = nominal_height;
 
     if (state == 1) {        //FORWARD
         // forward max speed
@@ -124,6 +125,8 @@ int wall_follower_and_avoid_controller(float *vel_x, float *vel_y, float *vel_w,
 
         // }
 
+        temp_height = CA_height;
+
         DEBUG_PRINT("wallfollow_w_avoid: move out of way\n");
 
     }
@@ -131,6 +134,7 @@ int wall_follower_and_avoid_controller(float *vel_x, float *vel_y, float *vel_w,
     *vel_x = temp_vel_x;
     *vel_y = temp_vel_y;
     *vel_w = temp_vel_w;
+    *height = temp_height;
 
     return state;
 }

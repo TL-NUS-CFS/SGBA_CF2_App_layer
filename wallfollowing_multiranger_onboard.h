@@ -9,6 +9,7 @@
 #define SRC_WALLFOLLOWING_MULTIRANGER_ONBOARD_H_
 #include <stdint.h>
 #include <stdbool.h>
+#include "drone_variables.h"
 
 int wall_follower(float *vel_x, float *vel_y, float *vel_w, float front_range, float side_range, float current_heading,
                   int direction_turn);

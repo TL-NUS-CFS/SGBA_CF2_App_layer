@@ -25,7 +25,7 @@
 #include "estimator_kalman.h"
 #include "stabilizer.h"
 
-#include "drone_variables.h"
+// #include "drone_variables.h"
 #include "wallfollowing_multiranger_onboard.h"
 #include "wallfollowing_with_avoid.h"
 #include "SGBA.h"
@@ -48,7 +48,6 @@ static bool keep_flying = false;
 float height;
 
 static bool taken_off = false;
-static float nominal_height = 0.3;
 
 // Switch to multiple methods, that increases in complexity 
 //1= wall_following: Go forward and follow walls with the multiranger 
@@ -70,7 +69,7 @@ static uint8_t rssi_beacon_filtered;
 
 static uint8_t id_inter_ext;
 static setpoint_t setpoint_BG;
-static float vel_x_cmd, vel_y_cmd, vel_w_cmd;
+static float vel_x_cmd, vel_y_cmd, vel_w_cmd, height_cmd;
 static float heading_rad;
 static float right_range;
 static float front_range;
@@ -363,7 +362,7 @@ void appMain(void *param)
             rssi_inter_filtered = 140;
         }
 
-        state = wall_follower_and_avoid_controller(&vel_x_cmd, &vel_y_cmd, &vel_w_cmd, front_range, left_range, right_range,
+        state = wall_follower_and_avoid_controller(&vel_x_cmd, &vel_y_cmd, &vel_w_cmd, &height_cmd, front_range, left_range, right_range,
                 heading_rad, rssi_inter_filtered);
 #endif
 #if METHOD==3 // SwWARM GRADIENT BUG ALGORITHM
@@ -396,7 +395,7 @@ void appMain(void *param)
         float vel_x_cmd_convert =  cosf(-psi) * vel_x_cmd + sinf(-psi) * vel_y_cmd;
         float vel_y_cmd_convert = -sinf(-psi) * vel_x_cmd + cosf(-psi) * vel_y_cmd;*/
         //float vel_y_cmd_convert = -1 * vel_y_cmd;
-        vel_command(&setpoint_BG, vel_x_cmd, vel_y_cmd, vel_w_cmd_convert, nominal_height);
+        vel_command(&setpoint_BG, vel_x_cmd, vel_y_cmd, vel_w_cmd_convert, height_cmd);
         on_the_ground = false;
       } else {
         /*
