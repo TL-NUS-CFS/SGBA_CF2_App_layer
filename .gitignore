@@ -3,5 +3,4 @@
 bin/*
 cf2.*
 version.c
-.gitmodules
-.gitmodules
+.vscode
