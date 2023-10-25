@@ -355,7 +355,7 @@ void appMain(void *param)
          *   then perform state machine
          */
         vel_w_cmd = 0;
-        hover(&setpoint_BG, nominal_height);
+        // hover(&setpoint_BG, nominal_height);
 
 #if METHOD == 1 // WALL_FOLLOWING
         // wall following state machine
@@ -400,17 +400,22 @@ void appMain(void *param)
         // float vel_y_cmd_convert = -1 * vel_y_cmd;
         if (state == 3)
         {
-          DEBUG_PRINT("MOVING UP, IN STATE 3");
-          if (height >= 1.2f) {
+          if (height >= 1.2f)
+          {
             hover(&setpoint_BG, 1.2f);
-          } else {
+            DEBUG_PRINT("Hover at CA_height \n");
+          }
+          else
+          {
             up(&setpoint_BG, 1.2f);
+            DEBUG_PRINT("MOVING UP, IN STATE 3 \n");
           }
           
         }
         else
         {
-          DEBUG_PRINT("NOT STATE 3?");
+          hover(&setpoint_BG, nominal_height);
+          DEBUG_PRINT("NOT STATE 3, hover at nominal_height. \n");
           vel_command(&setpoint_BG, vel_x_cmd, vel_y_cmd, vel_w_cmd_convert, nominal_height);
         }
         on_the_ground = false;
@@ -509,6 +514,7 @@ void appMain(void *param)
     {
       radiolinkSendP2PPacketBroadcast(&p_reply);
       radioSendBroadcastTime = usecTimestamp();
+      DEBUG_PRINT("state_machine: Broadcasting RSSI\n");
     }
 
 #endif
@@ -532,6 +538,7 @@ void p2pcallbackHandler(P2PPacket *p)
   else
   {
     rssi_inter = p->rssi;
+    DEBUG_PRINT("state_machine: Received RSSI is %i\n", rssi_inter);
     memcpy(&rssi_angle_inter_ext, &p->data[1], sizeof(float));
 
     rssi_array_other_drones[id_inter_ext] = rssi_inter;

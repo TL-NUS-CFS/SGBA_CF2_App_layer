@@ -7,5 +7,5 @@ float drone_speed = 0.3;
 
 int rssi_collision_threshold = 60;
 
-float nominal_height = 0.5;
+float nominal_height = 0.3;
 float CA_height = 1.2;
