@@ -34,7 +34,9 @@
 #include "radiolink.h"
 #include "median_filter.h"
 #include "configblock.h"
+#include "debug.h"
 
+//#define DEBUG_MODULE "SGBA"
 
 #define STATE_MACHINE_COMMANDER_PRI 3
 
@@ -198,6 +200,7 @@ void appMain(void *param)
   p_reply.data[0]=my_id;
   memcpy(&p_reply.data[1], &rssi_angle, sizeof(float));
   p_reply.size=5;
+  DEBUG_PRINT("appMain");
 
 #if METHOD!=1
   static uint64_t radioSendBroadcastTime=0;
@@ -279,7 +282,7 @@ void appMain(void *param)
       up_range = (float)rangeGet(rangeUp) / 1000.0f;
     }
 
-
+    DEBUG_PRINT("init mr");
     // Get position estimate of kalman filter
     point_t pos;
     estimatorKalmanGetEstimatedPos(&pos);
@@ -319,6 +322,7 @@ void appMain(void *param)
     // Don't fly if multiranger/updownlaser is not connected or the uprange is activated
 
     if (flowdeck_isinit && multiranger_isinit ) {
+      DEBUG_PRINT("correctly init both \n");
       correctly_initialized = true;
     }
 
@@ -399,7 +403,7 @@ void appMain(void *param)
          *  but the crazyflie  has not taken off
          *   then take off
          */
-          if (usecTimestamp() >= takeoffdelaytime + 1000*1000*my_id) {
+          if (usecTimestamp() >= takeoffdelaytime) {
 
               take_off(&setpoint_BG, nominal_height);
               if (height > nominal_height) {
@@ -407,7 +411,7 @@ void appMain(void *param)
 
 
 #if METHOD==1 // wall following
-          wall_follower_init(0.4, 0.5, 1);
+          wall_follower_init(0.6, 0.3, 1);
 #endif
 #if METHOD==2 // wallfollowing with avoid
           if (my_id%2==1)
@@ -484,12 +488,14 @@ void appMain(void *param)
 void p2pcallbackHandler(P2PPacket *p)
 {
     id_inter_ext = p->data[0];
+    DEBUG_PRINT("receive packet \n");
 
 
     if (id_inter_ext == 0x63)
     {
         // rssi_beacon =rssi_inter;
         keep_flying =  p->data[1];
+        DEBUG_PRINT("keep flying \n");
     }else if(id_inter_ext == 0x64){
         rssi_beacon =p->rssi;
 
