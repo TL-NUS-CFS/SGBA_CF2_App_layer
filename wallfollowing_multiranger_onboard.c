@@ -16,7 +16,7 @@ static float max_rate = 0.5;
 static float direction = 1;
 static float first_run = false;
 static int state = 1;
-float state_start_time;
+static float state_start_time;
 
 
 
