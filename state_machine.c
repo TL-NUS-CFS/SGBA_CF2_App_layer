@@ -36,7 +36,7 @@
 #include "configblock.h"
 #include "debug.h"
 
-//#define DEBUG_MODULE "SGBA"
+#define DEBUG_MODULE "SGBA"
 
 #define STATE_MACHINE_COMMANDER_PRI 3
 
@@ -46,7 +46,7 @@ static bool keep_flying = false;
 float height;
 
 static bool taken_off = false;
-static float nominal_height = 0.3;
+static float nominal_height = 0.5;
 
 // Switch to multiple methods, that increases in complexity
 //1= wall_following: Go forward and follow walls with the multiranger
@@ -200,7 +200,7 @@ void appMain(void *param)
   p_reply.data[0]=my_id;
   memcpy(&p_reply.data[1], &rssi_angle, sizeof(float));
   p_reply.size=5;
-  DEBUG_PRINT("appMain");
+  //DEBUG_PRINT("appMain");
 
 #if METHOD!=1
   static uint64_t radioSendBroadcastTime=0;
@@ -282,7 +282,7 @@ void appMain(void *param)
       up_range = (float)rangeGet(rangeUp) / 1000.0f;
     }
 
-    DEBUG_PRINT("init mr");
+    //DEBUG_PRINT("init mr");
     // Get position estimate of kalman filter
     point_t pos;
     estimatorKalmanGetEstimatedPos(&pos);
@@ -322,7 +322,7 @@ void appMain(void *param)
     // Don't fly if multiranger/updownlaser is not connected or the uprange is activated
 
     if (flowdeck_isinit && multiranger_isinit ) {
-      DEBUG_PRINT("correctly init both \n");
+      //DEBUG_PRINT("correctly init both \n");
       correctly_initialized = true;
     }
 
@@ -488,7 +488,7 @@ void appMain(void *param)
 void p2pcallbackHandler(P2PPacket *p)
 {
     id_inter_ext = p->data[0];
-    DEBUG_PRINT("receive packet \n");
+    //DEBUG_PRINT("receive packet \n");
 
 
     if (id_inter_ext == 0x63)
