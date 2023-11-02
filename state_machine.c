@@ -32,9 +32,12 @@
 #include "radiolink.h"
 #include "median_filter.h"
 #include "configblock.h"
-#include "debug.h"
+
+// #include "drone_variables.h"
 
 #include "debug.h"
+
+
 //#define DEBUG_MODULE "SGBA"
 
 #define STATE_MACHINE_COMMANDER_PRI 3
@@ -43,8 +46,10 @@ static bool keep_flying = false;
 
 float height;
 
-static bool taken_off = false;
+static float CA_height = 1.2;
 static float nominal_height = 0.3;
+
+static bool taken_off = false;
 
 // Switch to multiple methods, that increases in complexity
 // 1= wall_following: Go forward and follow walls with the multiranger
@@ -124,6 +129,19 @@ static void land(setpoint_t *sp, float velocity)
   sp->velocity.x = 0.0;
   sp->velocity.y = 0.0;
   sp->velocity.z = -velocity;
+  sp->mode.yaw = modeVelocity;
+  sp->attitudeRate.yaw = 0.0;
+}
+
+static void down(setpoint_t *sp, float height)
+{
+  sp->mode.x = modeVelocity;
+  sp->mode.y = modeVelocity;
+  sp->mode.z = modeVelocity;
+  sp->velocity.x = 0.0;
+  sp->velocity.y = 0.0;
+  sp->velocity.z = -nominal_height;
+  sp->position.z = height;
   sp->mode.yaw = modeVelocity;
   sp->attitudeRate.yaw = 0.0;
 }
@@ -401,25 +419,28 @@ void appMain(void *param)
         float vel_x_cmd_convert =  cosf(-psi) * vel_x_cmd + sinf(-psi) * vel_y_cmd;
         float vel_y_cmd_convert = -sinf(-psi) * vel_x_cmd + cosf(-psi) * vel_y_cmd;*/
         // float vel_y_cmd_convert = -1 * vel_y_cmd;
-        if (state == 3)
-        {
-          if (height >= 1.2f)
-          {
-            hover(&setpoint_BG, 1.2f);
+        if (state == 3) {
+          if (height >= CA_height) {
+            hover(&setpoint_BG, CA_height);
             DEBUG_PRINT("Hover at CA_height \n");
           }
-          else
-          {
-            up(&setpoint_BG, 1.2f);
+          else {
+            up(&setpoint_BG, CA_height);
             DEBUG_PRINT("MOVING UP, IN STATE 3 \n");
           }
-          
         }
         else
         {
-          hover(&setpoint_BG, nominal_height);
-          DEBUG_PRINT("NOT STATE 3, hover at nominal_height. \n");
-          vel_command(&setpoint_BG, vel_x_cmd, vel_y_cmd, vel_w_cmd_convert, nominal_height);
+          if (height >= 0.4f) {
+            down(&setpoint_BG, nominal_height);
+            DEBUG_PRINT("Going down, NOT STATE 3\n");
+          }
+          else {
+            hover(&setpoint_BG, nominal_height);
+            DEBUG_PRINT("NOT STATE 3, hover at nominal_height. \n");
+            vel_command(&setpoint_BG, vel_x_cmd, vel_y_cmd, vel_w_cmd_convert, nominal_height);
+          }
+          
         }
         on_the_ground = false;
       }

@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "debug.h": "c",
+        "sensors.h": "c",
+        "wallfollowing_multiranger_onboard.h": "c"
+    }
+}

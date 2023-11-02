@@ -10,6 +10,7 @@
 
 #include <math.h>
 #include "usec_time.h"
+#include "drone_variables.h"
 
 static float state_start_time;
 
@@ -42,7 +43,6 @@ int wall_follower_and_avoid_controller(float *vel_x, float *vel_y, float *vel_w,
 
     // Initalize static variables
     static int state = 1;
-    static int rssi_collision_threshold = 60;
 
     // if it is reinitialized
     if (first_run)
@@ -63,7 +63,6 @@ int wall_follower_and_avoid_controller(float *vel_x, float *vel_y, float *vel_w,
     /***********************************************************
      * Handle state transitions
      ***********************************************************/
-
     if (state == 1)
     { // FORWARD
         // if front range is close, start wallfollowing
@@ -87,6 +86,15 @@ int wall_follower_and_avoid_controller(float *vel_x, float *vel_y, float *vel_w,
         {
             state = transition(1);
         }
+    }
+
+    if (state == 3)
+    {
+        rssi_collision_threshold = 63;
+    }
+    else
+    {
+        rssi_collision_threshold = 60;
     }
     /***********************************************************
      * Handle state actions
