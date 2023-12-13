@@ -8,6 +8,7 @@
 
 #include <string.h>
 #include <errno.h>
+#define __USE_MISC
 #include <math.h>
 
 #include "FreeRTOS.h"
@@ -46,11 +47,10 @@ static bool keep_flying = false;
 float height;
 
 static bool taken_off = false;
-static float nominal_height = 0.5;
 
-// Switch to multiple methods, that increases in complexity
-//1= wall_following: Go forward and follow walls with the multiranger
-//2=wall following with avoid: This also follows walls but will move away if another crazyflie with an lower ID is coming close,
+// Switch to multiple methods, that increases in complexity 
+//1= wall_following: Go forward and follow walls with the multiranger 
+//2=wall following with avoid: This also follows walls but will move away if another crazyflie with an lower ID is coming close, 
 //3=SGBA: The SGBA method that incorperates the above methods.
 //        NOTE: the switching between outbound and inbound has not been implemented yet
 #define METHOD 1
@@ -77,6 +77,7 @@ static float up_range;
 static float back_range;
 static float rssi_angle;
 static int state;
+
 #if METHOD == 3
 static int state_wf;
 #endif
@@ -282,7 +283,7 @@ void appMain(void *param)
       up_range = (float)rangeGet(rangeUp) / 1000.0f;
     }
 
-    //DEBUG_PRINT("init mr");
+
     // Get position estimate of kalman filter
     point_t pos;
     estimatorKalmanGetEstimatedPos(&pos);
@@ -352,6 +353,7 @@ void appMain(void *param)
          */
     	  vel_w_cmd = 0;
         hover(&setpoint_BG, nominal_height);
+        // DEBUG_PRINT("state_machine: Hover at nominal_height\n");
 
 #if METHOD == 1 //WALL_FOLLOWING
         // wall following state machine
@@ -403,6 +405,7 @@ void appMain(void *param)
          *  but the crazyflie  has not taken off
          *   then take off
          */
+          // if (usecTimestamp() >= takeoffdelaytime + 1000*1000*my_id) {
           if (usecTimestamp() >= takeoffdelaytime) {
 
               take_off(&setpoint_BG, nominal_height);
@@ -411,13 +414,13 @@ void appMain(void *param)
 
 
 #if METHOD==1 // wall following
-          wall_follower_init(0.6, 0.3, 1);
+          wall_follower_init(drone_dist_from_wall, drone_speed, 1);
 #endif
 #if METHOD==2 // wallfollowing with avoid
           if (my_id%2==1)
-          init_wall_follower_and_avoid_controller(0.4, 0.5, -1);
+          init_wall_follower_and_avoid_controller(drone_dist_from_wall, drone_speed, -1);
           else
-          init_wall_follower_and_avoid_controller(0.4, 0.5, 1);
+          init_wall_follower_and_avoid_controller(drone_dist_from_wall, drone_speed, 1);
 
 #endif
 #if METHOD==3 // Swarm Gradient Bug Algorithm
@@ -477,6 +480,7 @@ void appMain(void *param)
     if (usecTimestamp() >= radioSendBroadcastTime + 1000*500) {
         radiolinkSendP2PPacketBroadcast(&p_reply);
         radioSendBroadcastTime = usecTimestamp();
+        // DEBUG_PRINT("state_machine: Broadcasting RSSI\n");
     }
 
 #endif
@@ -517,6 +521,7 @@ void p2pcallbackHandler(P2PPacket *p)
     }
     else{
         rssi_inter = p->rssi;
+        // DEBUG_PRINT("state_machine: Received RSSI is %i\n", rssi_inter);
         memcpy(&rssi_angle_inter_ext, &p->data[1], sizeof(float));
 
         rssi_array_other_drones[id_inter_ext] = rssi_inter;
