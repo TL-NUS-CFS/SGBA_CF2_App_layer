@@ -53,7 +53,7 @@ static bool taken_off = false;
 //2=wall following with avoid: This also follows walls but will move away if another crazyflie with an lower ID is coming close, 
 //3=SGBA: The SGBA method that incorperates the above methods.
 //        NOTE: the switching between outbound and inbound has not been implemented yet
-#define METHOD 1
+#define METHOD 2
 
 
 void p2pcallbackHandler(P2PPacket *p);
@@ -425,15 +425,15 @@ void appMain(void *param)
 #endif
 #if METHOD==3 // Swarm Gradient Bug Algorithm
           if (my_id == 4 || my_id == 8) {
-              init_SGBA_controller(0.4, 0.5, -0.8);
+              init_SGBA_controller(drone_dist_from_wall, drone_speed, -0.8);
           } else if (my_id == 2 || my_id == 6) {
-              init_SGBA_controller(0.4, 0.5, 0.8);
+              init_SGBA_controller(drone_dist_from_wall, drone_speed, 0.8);
           } else if (my_id == 3 || my_id == 7) {
-              init_SGBA_controller(0.4, 0.5, -2.4);
+              init_SGBA_controller(drone_dist_from_wall, drone_speed, -2.4);
           } else if (my_id == 5 || my_id == 9) {
-              init_SGBA_controller(0.4, 0.5, 2.4);
+              init_SGBA_controller(drone_dist_from_wall, drone_speed, 2.4);
           } else {
-              init_SGBA_controller(0.4, 0.5, 0.8);
+              init_SGBA_controller(drone_dist_from_wall, drone_speed, 0.8);
           }
 
 
@@ -521,7 +521,7 @@ void p2pcallbackHandler(P2PPacket *p)
     }
     else{
         rssi_inter = p->rssi;
-        // DEBUG_PRINT("state_machine: Received RSSI is %i\n", rssi_inter);
+        DEBUG_PRINT("state_machine: Received RSSI is %i\n", rssi_inter);
         memcpy(&rssi_angle_inter_ext, &p->data[1], sizeof(float));
 
         rssi_array_other_drones[id_inter_ext] = rssi_inter;

@@ -71,7 +71,7 @@ int wall_follower_and_avoid_controller(float *vel_x, float *vel_y, float *vel_w,
     if (state == 1) {     //FORWARD
         // if front range is close, start wallfollowing
         if (front_range < ref_distance_from_wall + 0.2f) {
-            wall_follower_init(ref_distance_from_wall, 0.5, 3);
+            wall_follower_init(ref_distance_from_wall, max_speed, 3);
             state = transition(2); //wall_following
         }
     } else if (state == 2) {      //WALL_FOLLOWING
@@ -96,7 +96,7 @@ int wall_follower_and_avoid_controller(float *vel_x, float *vel_y, float *vel_w,
 
     if (state == 1) {        //FORWARD
         // forward max speed
-        temp_vel_x = 0.5;
+        temp_vel_x = max_speed;
 
     } else  if (state == 2) {       //WALL_FOLLOWING
         //Get the values from the wallfollowing
@@ -107,22 +107,22 @@ int wall_follower_and_avoid_controller(float *vel_x, float *vel_y, float *vel_w,
         }
     } else if (state == 3) {       //MOVE_OUT_OF_WAY
 
-        // float save_distance = 0.7f;
-        // if (left_range < save_distance) {
-        //     temp_vel_y = temp_vel_y - 0.5f;
-        //     DEBUG_PRINT("move right\n");
-        // }
-        // if (right_range < save_distance) {
-        //     temp_vel_y = temp_vel_y + 0.5f;
-        //     DEBUG_PRINT("move left\n");
-        // }
-        // if (front_range < save_distance) {
-        //     temp_vel_x = temp_vel_x - 0.5f;
-        //     DEBUG_PRINT("move back\n");
+        float save_distance = 1.0f;
+        if (left_range < save_distance) {
+            temp_vel_y = temp_vel_y - 0.1f;
+            DEBUG_PRINT("move right\n");
+        }
+        if (right_range < save_distance) {
+            temp_vel_y = temp_vel_y + 0.1f;
+            DEBUG_PRINT("move left\n");
+        }
+        if (front_range < save_distance) {
+            temp_vel_x = temp_vel_x - 0.1f;
+            DEBUG_PRINT("move back\n");
 
-        // }
+        }
 
-        // DEBUG_PRINT("wallfollow_w_avoid: move out of way\n");
+        DEBUG_PRINT("wallfollow_w_avoid: move out of way\n");
 
     }
 
