@@ -88,9 +88,10 @@ static paramVarId_t paramid;
 static bool on_the_ground = true;
 //static uint32_t time_stamp_manual_startup_command = 0;
 static bool correctly_initialized;
-static uint8_t rssi_array_other_drones[9] = {150, 150, 150, 150, 150, 150, 150, 150, 150};
-static uint64_t time_array_other_drones[9] = {0};
-static float rssi_angle_array_other_drones[9] = {500.0f};
+// static uint8_t rssi_array_other_drones[20] = {150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150};
+static uint8_t rssi_array_other_drones[40] = {150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150};
+static uint64_t time_array_other_drones[40] = {0};
+static float rssi_angle_array_other_drones[40] = {500.0f};
 static uint8_t id_inter_closest=100;
 
 #define MANUAL_STARTUP_TIMEOUT  M2T(3000)
@@ -216,18 +217,21 @@ void appMain(void *param)
   systemWaitStart();
   vTaskDelay(M2T(3000));
   while (1) {
+    // DEBUG_PRINT("state_machine: address = %llu\n", address);
+    // DEBUG_PRINT("state_machine: my_id = %i\n", my_id);
 	// some delay before the whole thing starts
     vTaskDelay(10);
 
     // For every 1 second, reset the RSSI value to high if it hasn't been received for a while
-    for (uint8_t it = 0; it < 9; it++) if (usecTimestamp() >= time_array_other_drones[it] + 1000*1000) {
+    for (uint8_t it = 0; it < 40; it++) if (usecTimestamp() >= time_array_other_drones[it] + 1000*1000) {
         time_array_other_drones[it] = usecTimestamp() + 1000*1000+1;
         rssi_array_other_drones[it] = 150;
         rssi_angle_array_other_drones[it] = 500.0f;
+        
     }
 
     // get RSSI, id and angle of closests crazyflie.
-    id_inter_closest = (uint8_t)find_minimum(rssi_array_other_drones, 9);
+    id_inter_closest = (uint8_t)find_minimum(rssi_array_other_drones, 40);
     rssi_inter_closest = rssi_array_other_drones[id_inter_closest];
     rssi_angle_inter_closest = rssi_angle_array_other_drones[id_inter_closest];
 
@@ -360,9 +364,12 @@ void appMain(void *param)
         state = wall_follower(&vel_x_cmd, &vel_y_cmd, &vel_w_cmd, front_range, right_range, heading_rad, 1);
 #endif
 #if METHOD ==2 //WALL_FOLLOWER_AND_AVOID
+        // DEBUG_PRINT("state_machine: id_inter_closest = %i\n", id_inter_closest);
+        // DEBUG_PRINT("state_machine: my_id = %i\n", my_id);
         if (id_inter_closest > my_id) {
             rssi_inter_filtered = 140;
         }
+        // DEBUG_PRINT("state_machine: Method 2: callling WALL_FOLLOWING\n");
 
         state = wall_follower_and_avoid_controller(&vel_x_cmd, &vel_y_cmd, &vel_w_cmd, front_range, left_range, right_range,
                 heading_rad, rssi_inter_filtered);
@@ -397,6 +404,7 @@ void appMain(void *param)
         float vel_x_cmd_convert =  cosf(-psi) * vel_x_cmd + sinf(-psi) * vel_y_cmd;
         float vel_y_cmd_convert = -sinf(-psi) * vel_x_cmd + cosf(-psi) * vel_y_cmd;*/
         //float vel_y_cmd_convert = -1 * vel_y_cmd;
+        // DEBUG_PRINT("state_machine: Calling vel_command\n");
         vel_command(&setpoint_BG, vel_x_cmd, vel_y_cmd, vel_w_cmd_convert, nominal_height);
         on_the_ground = false;
       } else {

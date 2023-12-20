@@ -67,7 +67,6 @@ int wall_follower_and_avoid_controller(float *vel_x, float *vel_y, float *vel_w,
     /***********************************************************
      * Handle state transitions
      ***********************************************************/
-
     if (state == 1) {     //FORWARD
         // if front range is close, start wallfollowing
         if (front_range < ref_distance_from_wall + 0.2f) {
@@ -75,17 +74,15 @@ int wall_follower_and_avoid_controller(float *vel_x, float *vel_y, float *vel_w,
             state = transition(2); //wall_following
         }
     } else if (state == 2) {      //WALL_FOLLOWING
-
         if (rssi_other_drone < rssi_collision_threshold) {
             state = transition(3);
-            // DEBUG_PRINT("wallfollow_w_avoid: Transition to state 3 = move out of way\n");
         }
     } else if (state == 3) { //MOVE_OUT_OF_WAY
         if (rssi_other_drone > rssi_collision_threshold) {
             state = transition(1);
         }
-
     }
+
     /***********************************************************
      * Handle state actions
      ***********************************************************/
@@ -96,16 +93,20 @@ int wall_follower_and_avoid_controller(float *vel_x, float *vel_y, float *vel_w,
 
     if (state == 1) {        //FORWARD
         // forward max speed
+        DEBUG_PRINT("wallfollow_w_avoid: STATE 1 FORWARD\n");
         temp_vel_x = max_speed;
 
     } else  if (state == 2) {       //WALL_FOLLOWING
         //Get the values from the wallfollowing
+        DEBUG_PRINT("wallfollow_w_avoid: STATE 2 WALLFOLLOWING\n");
         if (local_direction == 1) {
             wall_follower(&temp_vel_x, &temp_vel_y, &temp_vel_w, front_range, right_range, current_heading, local_direction);
         } else if (local_direction == -1) {
             wall_follower(&temp_vel_x, &temp_vel_y, &temp_vel_w, front_range, left_range, current_heading, local_direction);
         }
     } else if (state == 3) {       //MOVE_OUT_OF_WAY
+
+        DEBUG_PRINT("wallfollow_w_avoid: STATE 3 MOVE OUT\n");
 
         float save_distance = 1.0f;
         if (left_range < save_distance) {
@@ -121,8 +122,6 @@ int wall_follower_and_avoid_controller(float *vel_x, float *vel_y, float *vel_w,
             DEBUG_PRINT("move back\n");
 
         }
-
-        DEBUG_PRINT("wallfollow_w_avoid: move out of way\n");
 
     }
 
