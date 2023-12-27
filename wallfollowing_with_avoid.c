@@ -120,7 +120,6 @@ int wall_follower_and_avoid_controller(float *vel_x, float *vel_y, float *vel_w,
         if (front_range < save_distance) {
             temp_vel_x = temp_vel_x - 0.1f;
             DEBUG_PRINT("move back\n");
-
         }
 
     }

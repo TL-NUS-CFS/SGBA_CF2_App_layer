@@ -90,9 +90,11 @@ static bool on_the_ground = true;
 static bool correctly_initialized;
 // static uint8_t rssi_array_other_drones[20] = {150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150};
 static uint8_t rssi_array_other_drones[40] = {150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150};
-static uint64_t time_array_other_drones[40] = {0};
+static uint64_t time_array_other_drones[40] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 static float rssi_angle_array_other_drones[40] = {500.0f};
 static uint8_t id_inter_closest=100;
+
+static struct MedianFilterFloat medFiltDrones[40];
 
 #define MANUAL_STARTUP_TIMEOUT  M2T(3000)
 
@@ -194,6 +196,11 @@ void appMain(void *param)
   init_median_filter_f(&medFilt_2, 5);
   static struct MedianFilterFloat medFilt_3;
   init_median_filter_f(&medFilt_3, 13);
+
+  //Init filters for each drone
+  for (uint8_t i = 0; i < 40; i++)
+    init_median_filter_f(&medFiltDrones[i], 5);
+
   p2pRegisterCB(p2pcallbackHandler);
   uint64_t address = configblockGetRadioAddress();
   uint8_t my_id =(uint8_t)((address) & 0x00000000ff);
@@ -222,12 +229,24 @@ void appMain(void *param)
 	// some delay before the whole thing starts
     vTaskDelay(10);
 
-    // For every 1 second, reset the RSSI value to high if it hasn't been received for a while
-    for (uint8_t it = 0; it < 40; it++) if (usecTimestamp() >= time_array_other_drones[it] + 1000*1000) {
-        time_array_other_drones[it] = usecTimestamp() + 1000*1000+1;
+    // For every 1 second (depend on rssi_reset_interval), reset the RSSI value to high if it hasn't been received for a while
+    for (uint8_t it = 0; it < 40; it++)
+    {
+      uint64_t currentTimestamp = usecTimestamp();
+      uint64_t otherDroneTimestamp = time_array_other_drones[it];
+      uint64_t deltaTime = currentTimestamp - otherDroneTimestamp;
+      const uint64_t cutoffTime = 1000*1000*rssi_reset_interval;
+
+      //if (usecTimestamp() >= time_array_other_drones[it] + 1000*1000*3) {
+      if (currentTimestamp >= otherDroneTimestamp + cutoffTime) {
+      
+        time_array_other_drones[it] = currentTimestamp + cutoffTime+1;
         rssi_array_other_drones[it] = 150;
         rssi_angle_array_other_drones[it] = 500.0f;
-        
+
+        init_median_filter_f(&medFiltDrones[it], 5);
+        DEBUG_PRINT("resetting RSSI for drone %i and delta is %lld\n", it, deltaTime);
+      }
     }
 
     // get RSSI, id and angle of closests crazyflie.
@@ -250,6 +269,18 @@ void appMain(void *param)
     static long sum_inter = 0;
     rssi_inter_filtered = (uint8_t)movingAvg(arrNumbers_inter, &sum_inter, pos_avg_inter, len_inter, (int)rssi_inter_closest);*/
     rssi_inter_filtered =  (uint8_t)update_median_filter_f(&medFilt_2, (float)rssi_inter_closest);
+
+
+    /*  // FOR RSSI CA DEBUGGING //
+    DEBUG_PRINT("state_machine: my_id = %i\n", my_id);
+    DEBUG_PRINT("state_machine: rssi array = ");
+    int loop;
+    for (loop=0; loop<40; loop++) {
+      DEBUG_PRINT("%d ", rssi_array_other_drones[loop]);
+    }
+    DEBUG_PRINT("state_machine: rssi of closest = %i\n", (int)rssi_array_other_drones[id_inter_closest]);
+    DEBUG_PRINT("state_machine: rssi_inter_filtered = %i\n", (int)rssi_inter_filtered);*/
+
 
     //checking init of multiranger and flowdeck
     paramid = paramGetVarId("deck", "bcMultiranger");
@@ -347,6 +378,31 @@ void appMain(void *param)
     state = 0;
 
 
+
+// Check RSSI of higher priority drones
+    //DEBUG_PRINT("Checking RSSI\n");
+    float rssi_inter_filtered = 140;
+    float rssi_this_id;
+    int i;
+    for (i = 0; i < my_id; i++) {
+      if (i % 2 != my_id % 2) {
+        //DEBUG_PRINT("For drone id %i\n", i);
+        rssi_this_id = get_median_filter_f(&medFiltDrones[i]);
+        if (rssi_this_id < rssi_collision_threshold && rssi_this_id > 0) {
+          rssi_inter_filtered = rssi_this_id;
+          //DEBUG_PRINT("rssi_inter_filtered = %d\n", (int)rssi_inter_filtered);
+          //DEBUG_PRINT("BREAK\n");
+          break;
+        }
+      }
+    }
+
+    //DEBUG_PRINT("Passed in rssi = %d\n", (int)rssi_inter_filtered);
+
+
+
+
+
     // Main flying code
     if (keep_flying) {
       if (taken_off) {
@@ -366,10 +422,41 @@ void appMain(void *param)
 #if METHOD ==2 //WALL_FOLLOWER_AND_AVOID
         // DEBUG_PRINT("state_machine: id_inter_closest = %i\n", id_inter_closest);
         // DEBUG_PRINT("state_machine: my_id = %i\n", my_id);
-        if (id_inter_closest > my_id) {
+        // DEBUG_PRINT("state_machine: rssi array = %hhn\n", rssi_array_other_drones);
+        // DEBUG_PRINT("state_machine: rssi of closest = %i\n", (int)rssi_angle_array_other_drones[id_inter_closest]);
+
+        // RSSI CA FOR 2 DRONES //
+        if (id_inter_closest > my_id || (id_inter_closest % 2 == my_id % 2)) {
             rssi_inter_filtered = 140;
+            
+            id_inter_closest = (uint8_t)find_minimum(rssi_array_other_drones, 40);
         }
-        // DEBUG_PRINT("state_machine: Method 2: callling WALL_FOLLOWING\n");
+        
+        // // RSSI CA FOR 3 OR MORE DRONES //
+
+        // // Check RSSI of higher priority drones
+        // DEBUG_PRINT("Checking RSSI\n");
+        // float rssi_inter_filtered = 140;
+        // float rssi_this_id;
+        // int i;
+        // for (i = 0; i < my_id; i++) {
+        //   if (i % 2 != my_id % 2) {
+        //     DEBUG_PRINT("For drone id %i\n", i);
+        //     rssi_this_id = get_median_filter_f(&medFiltDrones[i]);
+        //     if (rssi_this_id < rssi_collision_threshold && rssi_this_id > 0) {
+        //       rssi_inter_filtered = rssi_this_id;
+        //       DEBUG_PRINT("rssi_inter_filtered = %d\n", (int)rssi_inter_filtered);
+        //       DEBUG_PRINT("BREAK\n");
+        //       break;
+        //     }
+        //   }
+        // }
+
+        // DEBUG_PRINT("Passed in rssi = %d\n", (int)rssi_inter_filtered);
+        
+        
+
+
 
         state = wall_follower_and_avoid_controller(&vel_x_cmd, &vel_y_cmd, &vel_w_cmd, front_range, left_range, right_range,
                 heading_rad, rssi_inter_filtered);
@@ -535,6 +622,46 @@ void p2pcallbackHandler(P2PPacket *p)
         rssi_array_other_drones[id_inter_ext] = rssi_inter;
         time_array_other_drones[id_inter_ext] = usecTimestamp();
         rssi_angle_array_other_drones[id_inter_ext] = rssi_angle_inter_ext;
+
+        // //Update filter for drones
+        update_median_filter_f(&medFiltDrones[id_inter_ext], (float)rssi_inter);
+
+
+
+
+      //   // FOR DEBUGGING //
+
+      //   // Print medFiltDrones
+      //   int result = update_median_filter_f(&medFiltDrones[id_inter_ext], (float)rssi_inter);
+      //   DEBUG_PRINT("For drone %i\n", id_inter_ext);
+      //   for (int i = 0; i < medFiltDrones[id_inter_ext].size; i++)
+      //   {
+      //     float temp = medFiltDrones[id_inter_ext].data[i];
+      //     DEBUG_PRINT("%i ", (int)temp);
+      //   }
+      //   DEBUG_PRINT("state_machine: Median result is %i\n", (int)result);
+
+      //   // Print RSSI checking
+      //   DEBUG_PRINT("Checking RSSI\n");
+      //   float rssi_inter_filtered = 140;
+      //   float rssi_this_id;
+      //   int i;
+      //   uint64_t address = configblockGetRadioAddress();
+      //   uint8_t my_id =(uint8_t)((address) & 0x00000000ff);
+      //   for (i = 0; i < my_id; i++) {
+      //     DEBUG_PRINT("For drone %i\n", i);
+      //     if (i % 2 != my_id % 2) {
+      //       rssi_this_id = get_median_filter_f(&medFiltDrones[i]);
+      //       DEBUG_PRINT("rssi_this_id = %d\n", (int)rssi_this_id);
+      //       if (rssi_this_id < rssi_collision_threshold && rssi_this_id > 0) {
+      //         rssi_inter_filtered = rssi_this_id;
+      //         DEBUG_PRINT("BREAK\n");
+      //         break;
+      //       }
+      //     }
+      //   }
+      // DEBUG_PRINT("rssi_inter_filtered = %d\n", (int)rssi_inter_filtered);
+
 
 
     }
