@@ -425,38 +425,12 @@ void appMain(void *param)
         // DEBUG_PRINT("state_machine: rssi array = %hhn\n", rssi_array_other_drones);
         // DEBUG_PRINT("state_machine: rssi of closest = %i\n", (int)rssi_angle_array_other_drones[id_inter_closest]);
 
-        // RSSI CA FOR 2 DRONES //
-        if (id_inter_closest > my_id || (id_inter_closest % 2 == my_id % 2)) {
-            rssi_inter_filtered = 140;
+        // // RSSI CA FOR 2 DRONES //
+        // if (id_inter_closest > my_id || (id_inter_closest % 2 == my_id % 2)) {
+        //     rssi_inter_filtered = 140;
             
-            id_inter_closest = (uint8_t)find_minimum(rssi_array_other_drones, 40);
-        }
-        
-        // // RSSI CA FOR 3 OR MORE DRONES //
-
-        // // Check RSSI of higher priority drones
-        // DEBUG_PRINT("Checking RSSI\n");
-        // float rssi_inter_filtered = 140;
-        // float rssi_this_id;
-        // int i;
-        // for (i = 0; i < my_id; i++) {
-        //   if (i % 2 != my_id % 2) {
-        //     DEBUG_PRINT("For drone id %i\n", i);
-        //     rssi_this_id = get_median_filter_f(&medFiltDrones[i]);
-        //     if (rssi_this_id < rssi_collision_threshold && rssi_this_id > 0) {
-        //       rssi_inter_filtered = rssi_this_id;
-        //       DEBUG_PRINT("rssi_inter_filtered = %d\n", (int)rssi_inter_filtered);
-        //       DEBUG_PRINT("BREAK\n");
-        //       break;
-        //     }
-        //   }
+        //     id_inter_closest = (uint8_t)find_minimum(rssi_array_other_drones, 40);
         // }
-
-        // DEBUG_PRINT("Passed in rssi = %d\n", (int)rssi_inter_filtered);
-        
-        
-
-
 
         state = wall_follower_and_avoid_controller(&vel_x_cmd, &vel_y_cmd, &vel_w_cmd, front_range, left_range, right_range,
                 heading_rad, rssi_inter_filtered);
