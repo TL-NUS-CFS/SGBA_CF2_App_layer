@@ -93,12 +93,12 @@ int wall_follower_and_avoid_controller(float *vel_x, float *vel_y, float *vel_w,
 
     if (state == 1) {        //FORWARD
         // forward max speed
-        DEBUG_PRINT("wallfollow_w_avoid: STATE 1 FORWARD\n");
+        // DEBUG_PRINT("wallfollow_w_avoid: STATE 1 FORWARD\n");
         temp_vel_x = max_speed;
 
     } else  if (state == 2) {       //WALL_FOLLOWING
         //Get the values from the wallfollowing
-        DEBUG_PRINT("wallfollow_w_avoid: STATE 2 WALLFOLLOWING\n");
+        // DEBUG_PRINT("wallfollow_w_avoid: STATE 2 WALLFOLLOWING\n");
         if (local_direction == 1) {
             wall_follower(&temp_vel_x, &temp_vel_y, &temp_vel_w, front_range, right_range, current_heading, local_direction);
         } else if (local_direction == -1) {
@@ -106,20 +106,20 @@ int wall_follower_and_avoid_controller(float *vel_x, float *vel_y, float *vel_w,
         }
     } else if (state == 3) {       //MOVE_OUT_OF_WAY
 
-        DEBUG_PRINT("wallfollow_w_avoid: STATE 3 MOVE OUT\n");
+        // DEBUG_PRINT("wallfollow_w_avoid: STATE 3 MOVE OUT\n");
 
         float save_distance = 1.0f;
         if (left_range < save_distance) {
             temp_vel_y = temp_vel_y - 0.1f;
-            DEBUG_PRINT("move right\n");
+            // DEBUG_PRINT("move right\n");
         }
         if (right_range < save_distance) {
             temp_vel_y = temp_vel_y + 0.1f;
-            DEBUG_PRINT("move left\n");
+            // DEBUG_PRINT("move left\n");
         }
         if (front_range < save_distance) {
             temp_vel_x = temp_vel_x - 0.1f;
-            DEBUG_PRINT("move back\n");
+            // DEBUG_PRINT("move back\n");
         }
 
     }

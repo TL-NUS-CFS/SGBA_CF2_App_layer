@@ -42,6 +42,7 @@
 #define STATE_MACHINE_COMMANDER_PRI 3
 
 static bool keep_flying = false;
+static bool is_flying = false;
 
 
 float height;
@@ -234,7 +235,7 @@ void appMain(void *param)
     {
       uint64_t currentTimestamp = usecTimestamp();
       uint64_t otherDroneTimestamp = time_array_other_drones[it];
-      uint64_t deltaTime = currentTimestamp - otherDroneTimestamp;
+      // uint64_t deltaTime = currentTimestamp - otherDroneTimestamp;
       const uint64_t cutoffTime = 1000*1000*rssi_reset_interval;
 
       //if (usecTimestamp() >= time_array_other_drones[it] + 1000*1000*3) {
@@ -245,7 +246,7 @@ void appMain(void *param)
         rssi_angle_array_other_drones[it] = 500.0f;
 
         init_median_filter_f(&medFiltDrones[it], 5);
-        DEBUG_PRINT("resetting RSSI for drone %i and delta is %lld\n", it, deltaTime);
+        // DEBUG_PRINT("resetting RSSI for drone %i and delta is %lld\n", it, deltaTime);
       }
     }
 
@@ -546,7 +547,18 @@ void appMain(void *param)
     }
 
 #if METHOD != 1
-    if (usecTimestamp() >= radioSendBroadcastTime + 1000*500) {
+
+    if (height > 0.2f && up_range > 0.2f) {
+      // DEBUG_PRINT("height: %.2f\n", (double)height);
+      // DEBUG_PRINT("up range: %.2f\n", (double)up_range);
+      is_flying = true;
+    }
+    else {
+      // DEBUG_PRINT("NOT FLYING\n");
+      is_flying = false;
+    }
+
+    if ((usecTimestamp() >= radioSendBroadcastTime + 1000*500) && (is_flying == true)) {
         radiolinkSendP2PPacketBroadcast(&p_reply);
         radioSendBroadcastTime = usecTimestamp();
         // DEBUG_PRINT("state_machine: Broadcasting RSSI\n");
