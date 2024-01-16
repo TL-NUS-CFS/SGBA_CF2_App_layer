@@ -30,12 +30,17 @@
 #include "SGBA.h"
 #include "usec_time.h"
 
-
 #include "range.h"
 #include "radiolink.h"
 #include "median_filter.h"
 #include "configblock.h"
 #include "debug.h"
+
+//CPX (for comms with AI deck)
+#include "cpx.h"
+#include "cpx_internal_router.h"
+
+static void cpxPacketCallback(const CPXPacket_t* cpxRx); // Callback that is called when a CPX packet arrives
 
 #define DEBUG_MODULE "SGBA"
 
@@ -48,13 +53,12 @@ float height;
 
 static bool taken_off = false;
 
-// Switch to multiple methods, that increases in complexity 
-//1= wall_following: Go forward and follow walls with the multiranger 
-//2=wall following with avoid: This also follows walls but will move away if another crazyflie with an lower ID is coming close, 
+// Switch to multiple methods, that increases in complexity
+//1= wall_following: Go forward and follow walls with the multiranger
+//2=wall following with avoid: This also follows walls but will move away if another crazyflie with an lower ID is coming close,
 //3=SGBA: The SGBA method that incorperates the above methods.
 //        NOTE: the switching between outbound and inbound has not been implemented yet
 #define METHOD 2
-
 
 void p2pcallbackHandler(P2PPacket *p);
 static uint8_t rssi_inter;
@@ -96,9 +100,18 @@ static uint8_t id_inter_closest=100;
 
 static struct MedianFilterFloat medFiltDrones[40];
 
+// static const uint8_t DETECTION_INDEX_X = 0;
+// static const uint8_t DATA_INDEX_Y = 1;
+// static const uint8_t DATA_INDEX_W = 2;
+// static const uint8_t DATA_INDEX_H = 3;
+// static const uint8_t DATA_INDEX_SCORE = 4;
+// static const uint8_t DETECTION_INDEX_SIZE = 5;
+
+#define DETECTION_ARRAY_SIZE 20
+#define DETECTION_INVALID 255
+static uint8_t detection_data[DETECTION_ARRAY_SIZE] = { DETECTION_INVALID };
+
 #define MANUAL_STARTUP_TIMEOUT  M2T(3000)
-
-
 
 static void take_off(setpoint_t *sp, float velocity)
 {
@@ -211,6 +224,10 @@ void appMain(void *param)
   p_reply.size=5;
   //DEBUG_PRINT("appMain");
 
+  // Register a callback for CPX packets.
+  // Packets sent to destination=CPX_T_STM32 and function=CPX_F_APP will arrive here
+  cpxRegisterAppMessageHandler(cpxPacketCallback);
+
 #if METHOD!=1
   static uint64_t radioSendBroadcastTime=0;
 #endif
@@ -234,18 +251,18 @@ void appMain(void *param)
     {
       uint64_t currentTimestamp = usecTimestamp();
       uint64_t otherDroneTimestamp = time_array_other_drones[it];
-      uint64_t deltaTime = currentTimestamp - otherDroneTimestamp;
+      // uint64_t deltaTime = currentTimestamp - otherDroneTimestamp;
       const uint64_t cutoffTime = 1000*1000*rssi_reset_interval;
 
       //if (usecTimestamp() >= time_array_other_drones[it] + 1000*1000*3) {
       if (currentTimestamp >= otherDroneTimestamp + cutoffTime) {
-      
+
         time_array_other_drones[it] = currentTimestamp + cutoffTime+1;
         rssi_array_other_drones[it] = 150;
         rssi_angle_array_other_drones[it] = 500.0f;
 
         init_median_filter_f(&medFiltDrones[it], 5);
-        DEBUG_PRINT("resetting RSSI for drone %i and delta is %lld\n", it, deltaTime);
+        //DEBUG_PRINT("resetting RSSI for drone %i and delta is %lld\n", it, deltaTime);
       }
     }
 
@@ -428,10 +445,10 @@ void appMain(void *param)
         // RSSI CA FOR 2 DRONES //
         if (id_inter_closest > my_id || (id_inter_closest % 2 == my_id % 2)) {
             rssi_inter_filtered = 140;
-            
+
             id_inter_closest = (uint8_t)find_minimum(rssi_array_other_drones, 40);
         }
-        
+
         // // RSSI CA FOR 3 OR MORE DRONES //
 
         // // Check RSSI of higher priority drones
@@ -453,8 +470,8 @@ void appMain(void *param)
         // }
 
         // DEBUG_PRINT("Passed in rssi = %d\n", (int)rssi_inter_filtered);
-        
-        
+
+
 
 
 
@@ -573,7 +590,22 @@ void appMain(void *param)
 
 #if METHOD != 1
     if (usecTimestamp() >= radioSendBroadcastTime + 1000*500) {
+        const bool send_detection = detection_data[0] != DETECTION_INVALID;
+
+        if (send_detection)
+        {
+          p_reply.size = 5 + DETECTION_ARRAY_SIZE;
+          memcpy(&detection_data, &p_reply.data[2], DETECTION_ARRAY_SIZE);
+        }
+
         radiolinkSendP2PPacketBroadcast(&p_reply);
+
+        if (send_detection)
+        {
+          p_reply.size = 5;
+          detection_data[0] = DETECTION_INVALID;
+        }
+
         radioSendBroadcastTime = usecTimestamp();
         // DEBUG_PRINT("state_machine: Broadcasting RSSI\n");
     }
@@ -586,6 +618,9 @@ void appMain(void *param)
 
 void p2pcallbackHandler(P2PPacket *p)
 {
+    if (p->size != 5)
+      return;
+
     id_inter_ext = p->data[0];
     //DEBUG_PRINT("receive packet \n");
 
@@ -593,24 +628,24 @@ void p2pcallbackHandler(P2PPacket *p)
     if (id_inter_ext == 0x63)
     {
         // get the drone's ID
-        uint64_t address = configblockGetRadioAddress(); 
-        uint8_t my_id =(uint8_t)((address) & 0x00000000ff); 
+        uint64_t address = configblockGetRadioAddress();
+        uint8_t my_id =(uint8_t)((address) & 0x00000000ff);
 
         //if 3rd byte of packet = 0xff or = drone's ID
-        if (p->data[2] == 0xff || p->data[2] == my_id) 
+        if (p->data[2] == 0xff || p->data[2] == my_id)
         {
-         keep_flying =  p->data[1]; 
+         keep_flying =  p->data[1];
         }
 
         // if (p->data[2] == my_id){
-        //   keep_flying = !keep_flying; 
+        //   keep_flying = !keep_flying;
         // }
         // else{
         //   keep_flying =  p->data[1];
         // }
 
 
-    }else if(id_inter_ext == 0x64){ 
+    }else if(id_inter_ext == 0x64){
         rssi_beacon =p->rssi;
 
     }
@@ -668,6 +703,27 @@ void p2pcallbackHandler(P2PPacket *p)
 
 
 
+}
+
+static void cpxPacketCallback(const CPXPacket_t* cpxRx)
+{
+  memcpy(&detection_data, &cpxRx->data, DETECTION_ARRAY_SIZE);
+
+  // int x, y, w, h, score;
+
+  // memcpy(&x, &cpxRx->data[INT_SIZE * DATA_INDEX_X], INT_SIZE);
+  // memcpy(&y, &cpxRx->data[INT_SIZE * DATA_INDEX_Y], INT_SIZE);
+  // memcpy(&w, &cpxRx->data[INT_SIZE * DATA_INDEX_W], INT_SIZE);
+  // memcpy(&h, &cpxRx->data[INT_SIZE * DATA_INDEX_H], INT_SIZE);
+  // memcpy(&score, &cpxRx->data[INT_SIZE * DATA_INDEX_SCORE], INT_SIZE);
+
+  // DEBUG_PRINT("[STM32 Recv] \t X: %d, Y: %d, W: %d, H: %d, Score: %d\n",
+  //   x,
+  //   y,
+  //   w,
+  //   h,
+  //   score
+  // );
 }
 
 PARAM_GROUP_START(statemach)
