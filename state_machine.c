@@ -433,6 +433,7 @@ void appMain(void *param)
         //     id_inter_closest = (uint8_t)find_minimum(rssi_array_other_drones, 40);
         // }
 
+        rssi_inter_filtered = 140;
         state = wall_follower_and_avoid_controller(&vel_x_cmd, &vel_y_cmd, &vel_w_cmd, front_range, left_range, right_range,
                 heading_rad, rssi_inter_filtered);
 #endif
@@ -488,22 +489,22 @@ void appMain(void *param)
 #endif
 #if METHOD==2 // wallfollowing with avoid
           if (my_id%2==1)
-          init_wall_follower_and_avoid_controller(drone_dist_from_wall, drone_speed, -1);
+          init_wall_follower_and_avoid_controller(drone_dist_from_wall_1, drone_speed, -1);
           else
-          init_wall_follower_and_avoid_controller(drone_dist_from_wall, drone_speed, 1);
+          init_wall_follower_and_avoid_controller(drone_dist_from_wall_2, drone_speed, 1);
 
 #endif
 #if METHOD==3 // Swarm Gradient Bug Algorithm
           if (my_id == 4 || my_id == 8) {
-              init_SGBA_controller(drone_dist_from_wall, drone_speed, -0.8);
+              init_SGBA_controller(drone_dist_from_wall_2, drone_speed, -0.8);
           } else if (my_id == 2 || my_id == 6) {
-              init_SGBA_controller(drone_dist_from_wall, drone_speed, 0.8);
+              init_SGBA_controller(drone_dist_from_wall_2, drone_speed, 0.8);
           } else if (my_id == 3 || my_id == 7) {
-              init_SGBA_controller(drone_dist_from_wall, drone_speed, -2.4);
+              init_SGBA_controller(drone_dist_from_wall_1, drone_speed, -2.4);
           } else if (my_id == 5 || my_id == 9) {
-              init_SGBA_controller(drone_dist_from_wall, drone_speed, 2.4);
+              init_SGBA_controller(drone_dist_from_wall_1, drone_speed, 2.4);
           } else {
-              init_SGBA_controller(drone_dist_from_wall, drone_speed, 0.8);
+              init_SGBA_controller(drone_dist_from_wall_1, drone_speed, 0.8);
           }
 
 
