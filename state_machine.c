@@ -47,6 +47,7 @@ static void cpxPacketCallback(const CPXPacket_t* cpxRx); // Callback that is cal
 #define STATE_MACHINE_COMMANDER_PRI 3
 
 static bool keep_flying = false;
+static bool is_flying = false;
 
 
 float height;
@@ -59,6 +60,7 @@ static bool taken_off = false;
 //3=SGBA: The SGBA method that incorperates the above methods.
 //        NOTE: the switching between outbound and inbound has not been implemented yet
 #define METHOD 2
+
 
 void p2pcallbackHandler(P2PPacket *p);
 static uint8_t rssi_inter;
@@ -262,7 +264,7 @@ void appMain(void *param)
         rssi_angle_array_other_drones[it] = 500.0f;
 
         init_median_filter_f(&medFiltDrones[it], 5);
-        //DEBUG_PRINT("resetting RSSI for drone %i and delta is %lld\n", it, deltaTime);
+        // DEBUG_PRINT("resetting RSSI for drone %i and delta is %lld\n", it, deltaTime);
       }
     }
 
@@ -442,39 +444,14 @@ void appMain(void *param)
         // DEBUG_PRINT("state_machine: rssi array = %hhn\n", rssi_array_other_drones);
         // DEBUG_PRINT("state_machine: rssi of closest = %i\n", (int)rssi_angle_array_other_drones[id_inter_closest]);
 
-        // RSSI CA FOR 2 DRONES //
-        if (id_inter_closest > my_id || (id_inter_closest % 2 == my_id % 2)) {
-            rssi_inter_filtered = 140;
+        // // RSSI CA FOR 2 DRONES //
+        // if (id_inter_closest > my_id || (id_inter_closest % 2 == my_id % 2)) {
+        //     rssi_inter_filtered = 140;
 
-            id_inter_closest = (uint8_t)find_minimum(rssi_array_other_drones, 40);
-        }
-
-        // // RSSI CA FOR 3 OR MORE DRONES //
-
-        // // Check RSSI of higher priority drones
-        // DEBUG_PRINT("Checking RSSI\n");
-        // float rssi_inter_filtered = 140;
-        // float rssi_this_id;
-        // int i;
-        // for (i = 0; i < my_id; i++) {
-        //   if (i % 2 != my_id % 2) {
-        //     DEBUG_PRINT("For drone id %i\n", i);
-        //     rssi_this_id = get_median_filter_f(&medFiltDrones[i]);
-        //     if (rssi_this_id < rssi_collision_threshold && rssi_this_id > 0) {
-        //       rssi_inter_filtered = rssi_this_id;
-        //       DEBUG_PRINT("rssi_inter_filtered = %d\n", (int)rssi_inter_filtered);
-        //       DEBUG_PRINT("BREAK\n");
-        //       break;
-        //     }
-        //   }
+        //     id_inter_closest = (uint8_t)find_minimum(rssi_array_other_drones, 40);
         // }
 
-        // DEBUG_PRINT("Passed in rssi = %d\n", (int)rssi_inter_filtered);
-
-
-
-
-
+        rssi_inter_filtered = 140;
         state = wall_follower_and_avoid_controller(&vel_x_cmd, &vel_y_cmd, &vel_w_cmd, front_range, left_range, right_range,
                 heading_rad, rssi_inter_filtered);
 #endif
@@ -530,22 +507,22 @@ void appMain(void *param)
 #endif
 #if METHOD==2 // wallfollowing with avoid
           if (my_id%2==1)
-          init_wall_follower_and_avoid_controller(drone_dist_from_wall, drone_speed, -1);
+          init_wall_follower_and_avoid_controller(drone_dist_from_wall_1, drone_speed, -1);
           else
-          init_wall_follower_and_avoid_controller(drone_dist_from_wall, drone_speed, 1);
+          init_wall_follower_and_avoid_controller(drone_dist_from_wall_2, drone_speed, 1);
 
 #endif
 #if METHOD==3 // Swarm Gradient Bug Algorithm
           if (my_id == 4 || my_id == 8) {
-              init_SGBA_controller(drone_dist_from_wall, drone_speed, -0.8);
+              init_SGBA_controller(drone_dist_from_wall_2, drone_speed, -0.8);
           } else if (my_id == 2 || my_id == 6) {
-              init_SGBA_controller(drone_dist_from_wall, drone_speed, 0.8);
+              init_SGBA_controller(drone_dist_from_wall_2, drone_speed, 0.8);
           } else if (my_id == 3 || my_id == 7) {
-              init_SGBA_controller(drone_dist_from_wall, drone_speed, -2.4);
+              init_SGBA_controller(drone_dist_from_wall_1, drone_speed, -2.4);
           } else if (my_id == 5 || my_id == 9) {
-              init_SGBA_controller(drone_dist_from_wall, drone_speed, 2.4);
+              init_SGBA_controller(drone_dist_from_wall_1, drone_speed, 2.4);
           } else {
-              init_SGBA_controller(drone_dist_from_wall, drone_speed, 0.8);
+              init_SGBA_controller(drone_dist_from_wall_1, drone_speed, 0.8);
           }
 
 
@@ -589,7 +566,18 @@ void appMain(void *param)
     }
 
 #if METHOD != 1
-    if (usecTimestamp() >= radioSendBroadcastTime + 1000*500) {
+
+    if (height > 0.2f && up_range > 0.2f) {
+      // DEBUG_PRINT("height: %.2f\n", (double)height);
+      // DEBUG_PRINT("up range: %.2f\n", (double)up_range);
+      is_flying = true;
+    }
+    else {
+      // DEBUG_PRINT("NOT FLYING\n");
+      is_flying = false;
+    }
+
+    if ((usecTimestamp() >= radioSendBroadcastTime + 1000*500) && (is_flying == true)) {
         const bool send_detection = detection_data[0] != DETECTION_INVALID;
 
         if (send_detection)
@@ -618,9 +606,6 @@ void appMain(void *param)
 
 void p2pcallbackHandler(P2PPacket *p)
 {
-    if (p->size != 5)
-      return;
-
     id_inter_ext = p->data[0];
     //DEBUG_PRINT("receive packet \n");
 

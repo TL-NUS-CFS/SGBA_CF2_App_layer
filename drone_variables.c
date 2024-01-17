@@ -2,7 +2,8 @@
 
 #include "drone_variables.h"
 
-float drone_dist_from_wall = 0.6;
+float drone_dist_from_wall_1 = 0.6;
+float drone_dist_from_wall_2 = 1.2;
 float drone_speed = 0.3;
 
 int rssi_collision_threshold = 60;
