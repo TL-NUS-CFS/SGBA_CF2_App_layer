@@ -585,25 +585,22 @@ void appMain(void *param)
     }
 
     if ((usecTimestamp() >= radioSendBroadcastTime + 1000*500) && (is_flying == true)) {
-        xSemaphoreTake(detection_mutex, 0);
+        xSemaphoreTake(detection_mutex, 0); //lock detection_mutex
 
         const bool send_detection = detection_data[0] != DETECTION_INVALID;
 
         if (send_detection)
         {
-          p_reply.size = 5 + DETECTION_ARRAY_SIZE;
-          memcpy(&detection_data, &p_reply.data[2], DETECTION_ARRAY_SIZE);
-        }
-
-        radiolinkSendP2PPacketBroadcast(&p_reply);
-
-        if (send_detection)
-        {
-          p_reply.size = 5;
+          //Copy to p_reply and reset detection_data to invalid
+          memcpy(&p_reply.data[2], &detection_data, DETECTION_ARRAY_SIZE);
           detection_data[0] = DETECTION_INVALID;
         }
 
-        xSemaphoreGive(detection_mutex);
+        xSemaphoreGive(detection_mutex); //unlock detection_mutex
+
+        p_reply.size = send_detection ? 5 + DETECTION_ARRAY_SIZE : 5;
+
+        radiolinkSendP2PPacketBroadcast(&p_reply);
 
         radioSendBroadcastTime = usecTimestamp();
         // DEBUG_PRINT("state_machine: Broadcasting RSSI\n");
