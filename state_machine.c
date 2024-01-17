@@ -220,6 +220,7 @@ void appMain(void *param)
     init_median_filter_f(&medFiltDrones[i], 5);
 
   //Initialize detection mutex
+  detection_data[0] = DETECTION_INVALID;
   detection_mutex = xSemaphoreCreateMutex();
 
   p2pRegisterCB(p2pcallbackHandler);
