@@ -102,6 +102,8 @@ static uint8_t id_inter_closest=100;
 
 static struct MedianFilterFloat medFiltDrones[40];
 
+
+//Object detection
 // static const uint8_t DETECTION_INDEX_X = 0;
 // static const uint8_t DATA_INDEX_Y = 1;
 // static const uint8_t DATA_INDEX_W = 2;
@@ -112,6 +114,7 @@ static struct MedianFilterFloat medFiltDrones[40];
 #define DETECTION_ARRAY_SIZE 20
 #define DETECTION_INVALID 255
 static uint8_t detection_data[DETECTION_ARRAY_SIZE] = { DETECTION_INVALID };
+static SemaphoreHandle_t detection_mutex = NULL;
 
 #define MANUAL_STARTUP_TIMEOUT  M2T(3000)
 
@@ -215,6 +218,9 @@ void appMain(void *param)
   //Init filters for each drone
   for (uint8_t i = 0; i < 40; i++)
     init_median_filter_f(&medFiltDrones[i], 5);
+
+  //Initialize detection mutex
+  detection_mutex = xSemaphoreCreateMutex();
 
   p2pRegisterCB(p2pcallbackHandler);
   uint64_t address = configblockGetRadioAddress();
@@ -578,6 +584,8 @@ void appMain(void *param)
     }
 
     if ((usecTimestamp() >= radioSendBroadcastTime + 1000*500) && (is_flying == true)) {
+        xSemaphoreTake(detection_mutex, 0);
+
         const bool send_detection = detection_data[0] != DETECTION_INVALID;
 
         if (send_detection)
@@ -593,6 +601,8 @@ void appMain(void *param)
           p_reply.size = 5;
           detection_data[0] = DETECTION_INVALID;
         }
+
+        xSemaphoreGive(detection_mutex);
 
         radioSendBroadcastTime = usecTimestamp();
         // DEBUG_PRINT("state_machine: Broadcasting RSSI\n");
@@ -692,7 +702,9 @@ void p2pcallbackHandler(P2PPacket *p)
 
 static void cpxPacketCallback(const CPXPacket_t* cpxRx)
 {
+  xSemaphoreTake(detection_mutex, 0);
   memcpy(&detection_data, &cpxRx->data, DETECTION_ARRAY_SIZE);
+  xSemaphoreGive(detection_mutex);
 
   // int x, y, w, h, score;
 
