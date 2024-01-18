@@ -5,8 +5,10 @@
  *      Author: knmcguire
  */
 
+
 #include <string.h>
 #include <errno.h>
+#define __USE_MISC
 #include <math.h>
 
 #include "FreeRTOS.h"
@@ -28,35 +30,32 @@
 #include "SGBA.h"
 #include "usec_time.h"
 
+
 #include "range.h"
 #include "radiolink.h"
 #include "median_filter.h"
 #include "configblock.h"
-
-// #include "drone_variables.h"
-
 #include "debug.h"
 
-
-//#define DEBUG_MODULE "SGBA"
+#define DEBUG_MODULE "SGBA"
 
 #define STATE_MACHINE_COMMANDER_PRI 3
 
 static bool keep_flying = false;
+static bool is_flying = false;
+
 
 float height;
 
-static float CA_height = 1.2;
-static float nominal_height = 0.3;
-
 static bool taken_off = false;
 
-// Switch to multiple methods, that increases in complexity
-// 1= wall_following: Go forward and follow walls with the multiranger
-// 2=wall following with avoid: This also follows walls but will move away if another crazyflie with an lower ID is coming close,
-// 3=SGBA: The SGBA method that incorperates the above methods.
+// Switch to multiple methods, that increases in complexity 
+//1= wall_following: Go forward and follow walls with the multiranger 
+//2=wall following with avoid: This also follows walls but will move away if another crazyflie with an lower ID is coming close, 
+//3=SGBA: The SGBA method that incorperates the above methods.
 //        NOTE: the switching between outbound and inbound has not been implemented yet
 #define METHOD 2
+
 
 void p2pcallbackHandler(P2PPacket *p);
 static uint8_t rssi_inter;
@@ -79,6 +78,7 @@ static float up_range;
 static float back_range;
 static float rssi_angle;
 static int state;
+
 #if METHOD == 3
 static int state_wf;
 #endif
@@ -87,14 +87,19 @@ static logVarId_t varid;
 static paramVarId_t paramid;
 //static bool manual_startup = false;
 static bool on_the_ground = true;
-// static uint32_t time_stamp_manual_startup_command = 0;
+//static uint32_t time_stamp_manual_startup_command = 0;
 static bool correctly_initialized;
-static uint8_t rssi_array_other_drones[9] = {150, 150, 150, 150, 150, 150, 150, 150, 150};
-static uint64_t time_array_other_drones[9] = {0};
-static float rssi_angle_array_other_drones[9] = {500.0f};
-static uint8_t id_inter_closest = 100;
+// static uint8_t rssi_array_other_drones[20] = {150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150};
+static uint8_t rssi_array_other_drones[40] = {150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150};
+static uint64_t time_array_other_drones[40] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+static float rssi_angle_array_other_drones[40] = {500.0f};
+static uint8_t id_inter_closest=100;
 
-#define MANUAL_STARTUP_TIMEOUT M2T(3000)
+static struct MedianFilterFloat medFiltDrones[40];
+
+#define MANUAL_STARTUP_TIMEOUT  M2T(3000)
+
+
 
 static void take_off(setpoint_t *sp, float velocity)
 {
@@ -108,19 +113,6 @@ static void take_off(setpoint_t *sp, float velocity)
   sp->attitudeRate.yaw = 0.0;
 }
 
-static void up(setpoint_t *sp, float height)
-{
-  sp->mode.x = modeVelocity;
-  sp->mode.y = modeVelocity;
-  sp->mode.z = modeVelocity;
-  sp->velocity.x = 0.0;
-  sp->velocity.y = 0.0;
-  sp->velocity.z = nominal_height;
-  sp->position.z = height;
-  sp->mode.yaw = modeVelocity;
-  sp->attitudeRate.yaw = 0.0;
-}
-
 static void land(setpoint_t *sp, float velocity)
 {
   sp->mode.x = modeVelocity;
@@ -128,23 +120,11 @@ static void land(setpoint_t *sp, float velocity)
   sp->mode.z = modeVelocity;
   sp->velocity.x = 0.0;
   sp->velocity.y = 0.0;
-  sp->velocity.z = -velocity;
+  sp->velocity.z = - velocity;
   sp->mode.yaw = modeVelocity;
   sp->attitudeRate.yaw = 0.0;
 }
 
-static void down(setpoint_t *sp, float height)
-{
-  sp->mode.x = modeVelocity;
-  sp->mode.y = modeVelocity;
-  sp->mode.z = modeVelocity;
-  sp->velocity.x = 0.0;
-  sp->velocity.y = 0.0;
-  sp->velocity.z = -nominal_height;
-  sp->position.z = height;
-  sp->mode.yaw = modeVelocity;
-  sp->attitudeRate.yaw = 0.0;
-}
 
 static void hover(setpoint_t *sp, float height)
 {
@@ -169,6 +149,7 @@ static void vel_command(setpoint_t *sp, float vel_x, float vel_y, float yaw_rate
   sp->mode.yaw = modeVelocity;
   sp->attitudeRate.yaw = yaw_rate;
   sp->velocity_body = true;
+
 }
 
 static void shut_off_engines(setpoint_t *sp)
@@ -177,6 +158,7 @@ static void shut_off_engines(setpoint_t *sp)
   sp->mode.y = modeDisable;
   sp->mode.z = modeDisable;
   sp->mode.yaw = modeDisable;
+
 }
 
 static int32_t find_minimum(uint8_t a[], int32_t n)
@@ -186,10 +168,8 @@ static int32_t find_minimum(uint8_t a[], int32_t n)
   min = a[0];
   index = 0;
 
-  for (c = 1; c < n; c++)
-  {
-    if (a[c] < min)
-    {
+  for (c = 1; c < n; c++) {
+    if (a[c] < min) {
       index = c;
       min = a[c];
     }
@@ -217,45 +197,64 @@ void appMain(void *param)
   init_median_filter_f(&medFilt_2, 5);
   static struct MedianFilterFloat medFilt_3;
   init_median_filter_f(&medFilt_3, 13);
+
+  //Init filters for each drone
+  for (uint8_t i = 0; i < 40; i++)
+    init_median_filter_f(&medFiltDrones[i], 5);
+
   p2pRegisterCB(p2pcallbackHandler);
   uint64_t address = configblockGetRadioAddress();
-  uint8_t my_id = (uint8_t)((address)&0x00000000ff);
+  uint8_t my_id =(uint8_t)((address) & 0x00000000ff);
   static P2PPacket p_reply;
-  p_reply.port = 0x00;
-  p_reply.data[0] = my_id;
+  p_reply.port=0x00;
+  p_reply.data[0]=my_id;
   memcpy(&p_reply.data[1], &rssi_angle, sizeof(float));
-  p_reply.size = 5;
+  p_reply.size=5;
+  //DEBUG_PRINT("appMain");
 
-#if METHOD != 1
-  static uint64_t radioSendBroadcastTime = 0;
+#if METHOD!=1
+  static uint64_t radioSendBroadcastTime=0;
 #endif
 
   static uint64_t takeoffdelaytime = 0;
 
-#if METHOD == 3
+  #if METHOD==3
   static bool outbound = true;
-#endif
+  #endif
 
   systemWaitStart();
   vTaskDelay(M2T(3000));
-  while (1)
-  {
-    // some delay before the whole thing starts
+  while (1) {
+    // DEBUG_PRINT("state_machine: address = %llu\n", address);
+    // DEBUG_PRINT("state_machine: my_id = %i\n", my_id);
+	// some delay before the whole thing starts
     vTaskDelay(10);
 
-    // For every 1 second, reset the RSSI value to high if it hasn't been received for a while
-    for (uint8_t it = 0; it < 9; it++)
-      if (usecTimestamp() >= time_array_other_drones[it] + 1000 * 1000)
-      {
-        time_array_other_drones[it] = usecTimestamp() + 1000 * 1000 + 1;
+    // For every 1 second (depend on rssi_reset_interval), reset the RSSI value to high if it hasn't been received for a while
+    for (uint8_t it = 0; it < 40; it++)
+    {
+      uint64_t currentTimestamp = usecTimestamp();
+      uint64_t otherDroneTimestamp = time_array_other_drones[it];
+      // uint64_t deltaTime = currentTimestamp - otherDroneTimestamp;
+      const uint64_t cutoffTime = 1000*1000*rssi_reset_interval;
+
+      //if (usecTimestamp() >= time_array_other_drones[it] + 1000*1000*3) {
+      if (currentTimestamp >= otherDroneTimestamp + cutoffTime) {
+      
+        time_array_other_drones[it] = currentTimestamp + cutoffTime+1;
         rssi_array_other_drones[it] = 150;
         rssi_angle_array_other_drones[it] = 500.0f;
+
+        init_median_filter_f(&medFiltDrones[it], 5);
+        // DEBUG_PRINT("resetting RSSI for drone %i and delta is %lld\n", it, deltaTime);
       }
+    }
 
     // get RSSI, id and angle of closests crazyflie.
-    id_inter_closest = (uint8_t)find_minimum(rssi_array_other_drones, 9);
+    id_inter_closest = (uint8_t)find_minimum(rssi_array_other_drones, 40);
     rssi_inter_closest = rssi_array_other_drones[id_inter_closest];
     rssi_angle_inter_closest = rssi_angle_array_other_drones[id_inter_closest];
+
 
     // filter rssi
     /*static int pos_avg = 0;
@@ -264,18 +263,31 @@ void appMain(void *param)
     static int len = sizeof(arrNumbers) / sizeof(int);
     rssi_beacon_filtered = (uint8_t)movingAvg(arrNumbers, &sum, pos_avg, len, (int)rssi_beacon);*/
 
+
     /*static int arrNumbers_inter[10] = {35};
     static int len_inter = 10;//sizeof(arrNumbers_inter) / sizeof(int);
     static int pos_avg_inter = 0;
     static long sum_inter = 0;
     rssi_inter_filtered = (uint8_t)movingAvg(arrNumbers_inter, &sum_inter, pos_avg_inter, len_inter, (int)rssi_inter_closest);*/
-    rssi_inter_filtered = (uint8_t)update_median_filter_f(&medFilt_2, (float)rssi_inter_closest);
+    rssi_inter_filtered =  (uint8_t)update_median_filter_f(&medFilt_2, (float)rssi_inter_closest);
+
+
+    /*  // FOR RSSI CA DEBUGGING //
+    DEBUG_PRINT("state_machine: my_id = %i\n", my_id);
+    DEBUG_PRINT("state_machine: rssi array = ");
+    int loop;
+    for (loop=0; loop<40; loop++) {
+      DEBUG_PRINT("%d ", rssi_array_other_drones[loop]);
+    }
+    DEBUG_PRINT("state_machine: rssi of closest = %i\n", (int)rssi_array_other_drones[id_inter_closest]);
+    DEBUG_PRINT("state_machine: rssi_inter_filtered = %i\n", (int)rssi_inter_filtered);*/
+
 
     //checking init of multiranger and flowdeck
     paramid = paramGetVarId("deck", "bcMultiranger");
-    uint8_t multiranger_isinit = paramGetInt(paramid);
+    uint8_t multiranger_isinit=paramGetInt(paramid);
     paramid = paramGetVarId("deck", "bcFlow2");
-    uint8_t flowdeck_isinit = paramGetUint(paramid);
+    uint8_t flowdeck_isinit=paramGetUint(paramid);
 
     // get current height and heading
     varid = logGetVarId("kalman", "stateZ");
@@ -284,10 +296,11 @@ void appMain(void *param)
     float heading_deg = logGetFloat(varid);
     heading_rad = heading_deg * (float)M_PI / 180.0f;
 
-    // t RSSI of beacon
+    //t RSSI of beacon
     varid = logGetVarId("radio", "rssi");
     rssi_beacon = logGetFloat(varid);
-    rssi_beacon_filtered = (uint8_t)update_median_filter_f(&medFilt_3, (float)rssi_beacon);
+    rssi_beacon_filtered =  (uint8_t)update_median_filter_f(&medFilt_3, (float)rssi_beacon);
+
 
     /* filter rssi
     static int pos_avg = 0;
@@ -296,15 +309,16 @@ void appMain(void *param)
     static int len = sizeof(arrNumbers) / sizeof(int);
     rssi_beacon_filtered = (uint8_t)movingAvg(arrNumbers, &sum, pos_avg, len, (int)rssi_beacon);*/
 
+
     // Select which laser range sensor readings to use
-    if (multiranger_isinit)
-    {
+    if (multiranger_isinit) {
       front_range = (float)rangeGet(rangeFront) / 1000.0f;
       right_range = (float)rangeGet(rangeRight) / 1000.0f;
       left_range = (float)rangeGet(rangeLeft) / 1000.0f;
       back_range = (float)rangeGet(rangeBack) / 1000.0f;
       up_range = (float)rangeGet(rangeUp) / 1000.0f;
     }
+
 
     // Get position estimate of kalman filter
     point_t pos;
@@ -315,14 +329,13 @@ void appMain(void *param)
 
     // Filtere uprange, since it sometimes gives a low spike that
     up_range_filtered = update_median_filter_f(&medFilt, up_range);
-    if (up_range_filtered < 0.05f)
-    {
+    if (up_range_filtered < 0.05f) {
       up_range_filtered = up_range;
     }
-    // up_range_filtered = 1.0f;
+    //up_range_filtered = 1.0f;
     //***************** Manual Startup procedure*************//
 
-    // TODO: shut off engines when crazyflie is on it's back.
+    //TODO: shut off engines when crazyflie is on it's back.
 
     /*    // indicate if top range is hit while it is not flying yet, then start counting
         if (keep_flying == false && manual_startup==false && up_range <0.2f && on_the_ground == true)
@@ -345,69 +358,104 @@ void appMain(void *param)
 
     // Don't fly if multiranger/updownlaser is not connected or the uprange is activated
 
-    if (flowdeck_isinit && multiranger_isinit)
-    {
+    if (flowdeck_isinit && multiranger_isinit ) {
+      //DEBUG_PRINT("correctly init both \n");
       correctly_initialized = true;
     }
 
+
 #if METHOD == 3
     uint8_t rssi_beacon_threshold = 41;
-    if (keep_flying == true && (!correctly_initialized || up_range < 0.2f || (!outbound && rssi_beacon_filtered < rssi_beacon_threshold)))
-    {
-      keep_flying = 0;
-    }
+       if (keep_flying == true && (!correctly_initialized || up_range < 0.2f || (!outbound
+                                   && rssi_beacon_filtered < rssi_beacon_threshold))) {
+         keep_flying = 0;
+       }
 #else
-    if (keep_flying == true && (!correctly_initialized || up_range < 0.2f))
-    {
-      keep_flying = 0;
-    }
+       if (keep_flying == true && (!correctly_initialized || up_range < 0.2f)) {
+         keep_flying = 0;
+       }
 #endif
 
     state = 0;
 
+
+
+// Check RSSI of higher priority drones
+    //DEBUG_PRINT("Checking RSSI\n");
+    float rssi_inter_filtered = 140;
+    float rssi_this_id;
+    int i;
+    for (i = 0; i < my_id; i++) {
+      if (i % 2 != my_id % 2) {
+        //DEBUG_PRINT("For drone id %i\n", i);
+        rssi_this_id = get_median_filter_f(&medFiltDrones[i]);
+        if (rssi_this_id < rssi_collision_threshold && rssi_this_id > 0) {
+          rssi_inter_filtered = rssi_this_id;
+          //DEBUG_PRINT("rssi_inter_filtered = %d\n", (int)rssi_inter_filtered);
+          //DEBUG_PRINT("BREAK\n");
+          break;
+        }
+      }
+    }
+
+    //DEBUG_PRINT("Passed in rssi = %d\n", (int)rssi_inter_filtered);
+
+
+
+
+
     // Main flying code
-    if (keep_flying)
-    {
-      if (taken_off)
-      {
+    if (keep_flying) {
+      if (taken_off) {
         /*
          * If the flight is given a OK
          *  and the crazyflie has taken off
          *   then perform state machine
          */
-        vel_w_cmd = 0;
-        // hover(&setpoint_BG, nominal_height);
+    	  vel_w_cmd = 0;
+        hover(&setpoint_BG, nominal_height);
+        // DEBUG_PRINT("state_machine: Hover at nominal_height\n");
 
-#if METHOD == 1 // WALL_FOLLOWING
+#if METHOD == 1 //WALL_FOLLOWING
         // wall following state machine
         state = wall_follower(&vel_x_cmd, &vel_y_cmd, &vel_w_cmd, front_range, right_range, heading_rad, 1);
 #endif
-#if METHOD == 2 // WALL_FOLLOWER_AND_AVOID
-        if (id_inter_closest > my_id)
-        {
-          rssi_inter_filtered = 140;
-        }
+#if METHOD ==2 //WALL_FOLLOWER_AND_AVOID
+        // DEBUG_PRINT("state_machine: id_inter_closest = %i\n", id_inter_closest);
+        // DEBUG_PRINT("state_machine: my_id = %i\n", my_id);
+        // DEBUG_PRINT("state_machine: rssi array = %hhn\n", rssi_array_other_drones);
+        // DEBUG_PRINT("state_machine: rssi of closest = %i\n", (int)rssi_angle_array_other_drones[id_inter_closest]);
 
+        // // RSSI CA FOR 2 DRONES //
+        // if (id_inter_closest > my_id || (id_inter_closest % 2 == my_id % 2)) {
+        //     rssi_inter_filtered = 140;
+            
+        //     id_inter_closest = (uint8_t)find_minimum(rssi_array_other_drones, 40);
+        // }
+
+        rssi_inter_filtered = 140;
         state = wall_follower_and_avoid_controller(&vel_x_cmd, &vel_y_cmd, &vel_w_cmd, front_range, left_range, right_range,
-                                                   heading_rad, rssi_inter_filtered);
+                heading_rad, rssi_inter_filtered);
 #endif
-#if METHOD == 3 // SwWARM GRADIENT BUG ALGORITHM
+#if METHOD==3 // SwWARM GRADIENT BUG ALGORITHM
+
+
 
         bool priority = false;
-        if (id_inter_closest > my_id)
-        {
+        if (id_inter_closest > my_id) {
           priority = true;
-        }
-        else
-        {
+        } else {
           priority = false;
-        }
-        // TODO make outbound depended on battery.
-        state = SGBA_controller(&vel_x_cmd, &vel_y_cmd, &vel_w_cmd, &rssi_angle, &state_wf, front_range,
-                                left_range, right_range, back_range, heading_rad,
-                                (float)pos.x, (float)pos.y, rssi_beacon_filtered, rssi_inter_filtered, rssi_angle_inter_closest, priority, outbound);
 
-        memcpy(&p_reply.data[1], &rssi_angle, sizeof(float));
+        }
+        //TODO make outbound depended on battery.
+        state = SGBA_controller(&vel_x_cmd, &vel_y_cmd, &vel_w_cmd, &rssi_angle, &state_wf, front_range,
+                                             left_range, right_range, back_range, heading_rad,
+                                             (float)pos.x, (float)pos.y, rssi_beacon_filtered, rssi_inter_filtered, rssi_angle_inter_closest, priority, outbound);
+
+        memcpy(&p_reply.data[1],&rssi_angle, sizeof(float));
+
+
 
 #endif
 
@@ -418,108 +466,75 @@ void appMain(void *param)
         /*float psi = heading_rad;
         float vel_x_cmd_convert =  cosf(-psi) * vel_x_cmd + sinf(-psi) * vel_y_cmd;
         float vel_y_cmd_convert = -sinf(-psi) * vel_x_cmd + cosf(-psi) * vel_y_cmd;*/
-        // float vel_y_cmd_convert = -1 * vel_y_cmd;
-        if (state == 3) {
-          if (height >= CA_height) {
-            hover(&setpoint_BG, CA_height);
-            DEBUG_PRINT("Hover at CA_height \n");
-          }
-          else {
-            up(&setpoint_BG, CA_height);
-            DEBUG_PRINT("MOVING UP, IN STATE 3 \n");
-          }
-        }
-        else
-        {
-          if (height >= 0.4f) {
-            down(&setpoint_BG, nominal_height);
-            DEBUG_PRINT("Going down, NOT STATE 3\n");
-          }
-          else {
-            hover(&setpoint_BG, nominal_height);
-            DEBUG_PRINT("NOT STATE 3, hover at nominal_height. \n");
-            vel_command(&setpoint_BG, vel_x_cmd, vel_y_cmd, vel_w_cmd_convert, nominal_height);
-          }
-          
-        }
+        //float vel_y_cmd_convert = -1 * vel_y_cmd;
+        // DEBUG_PRINT("state_machine: Calling vel_command\n");
+        vel_command(&setpoint_BG, vel_x_cmd, vel_y_cmd, vel_w_cmd_convert, nominal_height);
         on_the_ground = false;
-      }
-      else
-      {
+      } else {
         /*
          * If the flight is given a OK
          *  but the crazyflie  has not taken off
          *   then take off
          */
+          // if (usecTimestamp() >= takeoffdelaytime + 1000*1000*my_id) {
           if (usecTimestamp() >= takeoffdelaytime) {
 
-          take_off(&setpoint_BG, nominal_height);
-          if (height > nominal_height)
-          {
-            taken_off = true;
+              take_off(&setpoint_BG, nominal_height);
+              if (height > nominal_height) {
+                  taken_off = true;
 
-#if METHOD == 1 // wall following
-            wall_follower_init(0.4, 0.5, 1);
-#endif
-#if METHOD == 2 // wallfollowing with avoid
-            if (my_id % 2 == 1)
-              init_wall_follower_and_avoid_controller(0.6, 0.3, -1);
-            else
-              init_wall_follower_and_avoid_controller(0.6, 0.3, 1);
 
+#if METHOD==1 // wall following
+          wall_follower_init(drone_dist_from_wall, drone_speed, 1);
 #endif
-#if METHOD == 3 // Swarm Gradient Bug Algorithm
-            if (my_id == 4 || my_id == 8)
-            {
-              init_SGBA_controller(0.4, 0.5, -0.8);
-            }
-            else if (my_id == 2 || my_id == 6)
-            {
-              init_SGBA_controller(0.4, 0.5, 0.8);
-            }
-            else if (my_id == 3 || my_id == 7)
-            {
-              init_SGBA_controller(0.4, 0.5, -2.4);
-            }
-            else if (my_id == 5 || my_id == 9)
-            {
-              init_SGBA_controller(0.4, 0.5, 2.4);
-            }
-            else
-            {
-              init_SGBA_controller(0.4, 0.5, 0.8);
-            }
+#if METHOD==2 // wallfollowing with avoid
+          if (my_id%2==1)
+          init_wall_follower_and_avoid_controller(drone_dist_from_wall_1, drone_speed, -1);
+          else
+          init_wall_follower_and_avoid_controller(drone_dist_from_wall_2, drone_speed, 1);
 
 #endif
+#if METHOD==3 // Swarm Gradient Bug Algorithm
+          if (my_id == 4 || my_id == 8) {
+              init_SGBA_controller(drone_dist_from_wall_2, drone_speed, -0.8);
+          } else if (my_id == 2 || my_id == 6) {
+              init_SGBA_controller(drone_dist_from_wall_2, drone_speed, 0.8);
+          } else if (my_id == 3 || my_id == 7) {
+              init_SGBA_controller(drone_dist_from_wall_1, drone_speed, -2.4);
+          } else if (my_id == 5 || my_id == 9) {
+              init_SGBA_controller(drone_dist_from_wall_1, drone_speed, 2.4);
+          } else {
+              init_SGBA_controller(drone_dist_from_wall_1, drone_speed, 0.8);
           }
+
+
+#endif
+
+
+              }
           on_the_ground = false;
-        }
-        else
-        {
-          shut_off_engines(&setpoint_BG);
-          taken_off = false;
-        }
+          }else{
+              shut_off_engines(&setpoint_BG);
+              taken_off = false;
+          }
+
       }
-    }
-    else
-    {
-      if (taken_off)
-      {
+    } else {
+      if (taken_off) {
         /*
          * If the flight is given a not OK
          *  but the crazyflie  has already taken off
          *   then land
          */
         land(&setpoint_BG, 0.2f);
-        if (height < 0.1f)
-        {
+        if (height < 0.1f) {
           shut_off_engines(&setpoint_BG);
           taken_off = false;
         }
         on_the_ground = false;
-      }
-      else
-      {
+
+      } else {
+
 
         /*
          * If the flight is given a not OK
@@ -527,47 +542,119 @@ void appMain(void *param)
          *   then keep engines off
          */
         shut_off_engines(&setpoint_BG);
-        takeoffdelaytime = usecTimestamp();
+        takeoffdelaytime=usecTimestamp();
         on_the_ground = true;
       }
     }
 
 #if METHOD != 1
-    if (usecTimestamp() >= radioSendBroadcastTime + 1000 * 500)
-    {
-      radiolinkSendP2PPacketBroadcast(&p_reply);
-      radioSendBroadcastTime = usecTimestamp();
-      DEBUG_PRINT("state_machine: Broadcasting RSSI\n");
+
+    if (height > 0.2f && up_range > 0.2f) {
+      // DEBUG_PRINT("height: %.2f\n", (double)height);
+      // DEBUG_PRINT("up range: %.2f\n", (double)up_range);
+      is_flying = true;
+    }
+    else {
+      // DEBUG_PRINT("NOT FLYING\n");
+      is_flying = false;
+    }
+
+    if ((usecTimestamp() >= radioSendBroadcastTime + 1000*500) && (is_flying == true)) {
+        radiolinkSendP2PPacketBroadcast(&p_reply);
+        radioSendBroadcastTime = usecTimestamp();
+        // DEBUG_PRINT("state_machine: Broadcasting RSSI\n");
     }
 
 #endif
     commanderSetSetpoint(&setpoint_BG, STATE_MACHINE_COMMANDER_PRI);
+
   }
 }
 
 void p2pcallbackHandler(P2PPacket *p)
 {
-  id_inter_ext = p->data[0];
+    id_inter_ext = p->data[0];
+    //DEBUG_PRINT("receive packet \n");
 
-  if (id_inter_ext == 0x63)
-  {
-    // rssi_beacon =rssi_inter;
-    keep_flying = p->data[1];
-  }
-  else if (id_inter_ext == 0x64)
-  {
-    rssi_beacon = p->rssi;
-  }
-  else
-  {
-    rssi_inter = p->rssi;
-    DEBUG_PRINT("state_machine: Received RSSI is %i\n", rssi_inter);
-    memcpy(&rssi_angle_inter_ext, &p->data[1], sizeof(float));
 
-    rssi_array_other_drones[id_inter_ext] = rssi_inter;
-    time_array_other_drones[id_inter_ext] = usecTimestamp();
-    rssi_angle_array_other_drones[id_inter_ext] = rssi_angle_inter_ext;
-  }
+    if (id_inter_ext == 0x63)
+    {
+        // get the drone's ID
+        uint64_t address = configblockGetRadioAddress(); 
+        uint8_t my_id =(uint8_t)((address) & 0x00000000ff); 
+
+        //if 3rd byte of packet = 0xff or = drone's ID
+        if (p->data[2] == 0xff || p->data[2] == my_id) 
+        {
+         keep_flying =  p->data[1]; 
+        }
+
+        // if (p->data[2] == my_id){
+        //   keep_flying = !keep_flying; 
+        // }
+        // else{
+        //   keep_flying =  p->data[1];
+        // }
+
+
+    }else if(id_inter_ext == 0x64){ 
+        rssi_beacon =p->rssi;
+
+    }
+    else{
+        rssi_inter = p->rssi;
+        DEBUG_PRINT("state_machine: Received RSSI is %i\n", rssi_inter);
+        memcpy(&rssi_angle_inter_ext, &p->data[1], sizeof(float));
+
+        rssi_array_other_drones[id_inter_ext] = rssi_inter;
+        time_array_other_drones[id_inter_ext] = usecTimestamp();
+        rssi_angle_array_other_drones[id_inter_ext] = rssi_angle_inter_ext;
+
+        // //Update filter for drones
+        update_median_filter_f(&medFiltDrones[id_inter_ext], (float)rssi_inter);
+
+
+
+
+      //   // FOR DEBUGGING //
+
+      //   // Print medFiltDrones
+      //   int result = update_median_filter_f(&medFiltDrones[id_inter_ext], (float)rssi_inter);
+      //   DEBUG_PRINT("For drone %i\n", id_inter_ext);
+      //   for (int i = 0; i < medFiltDrones[id_inter_ext].size; i++)
+      //   {
+      //     float temp = medFiltDrones[id_inter_ext].data[i];
+      //     DEBUG_PRINT("%i ", (int)temp);
+      //   }
+      //   DEBUG_PRINT("state_machine: Median result is %i\n", (int)result);
+
+      //   // Print RSSI checking
+      //   DEBUG_PRINT("Checking RSSI\n");
+      //   float rssi_inter_filtered = 140;
+      //   float rssi_this_id;
+      //   int i;
+      //   uint64_t address = configblockGetRadioAddress();
+      //   uint8_t my_id =(uint8_t)((address) & 0x00000000ff);
+      //   for (i = 0; i < my_id; i++) {
+      //     DEBUG_PRINT("For drone %i\n", i);
+      //     if (i % 2 != my_id % 2) {
+      //       rssi_this_id = get_median_filter_f(&medFiltDrones[i]);
+      //       DEBUG_PRINT("rssi_this_id = %d\n", (int)rssi_this_id);
+      //       if (rssi_this_id < rssi_collision_threshold && rssi_this_id > 0) {
+      //         rssi_inter_filtered = rssi_this_id;
+      //         DEBUG_PRINT("BREAK\n");
+      //         break;
+      //       }
+      //     }
+      //   }
+      // DEBUG_PRINT("rssi_inter_filtered = %d\n", (int)rssi_inter_filtered);
+
+
+
+    }
+
+
+
 }
 
 PARAM_GROUP_START(statemach)
