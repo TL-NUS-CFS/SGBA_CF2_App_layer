@@ -11,3 +11,5 @@ float rssi_reset_interval = 3.0;
 
 float nominal_height = 0.3;
 float CA_height = 1.3;
+
+int number_of_angles = 5;

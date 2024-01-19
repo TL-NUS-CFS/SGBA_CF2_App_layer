@@ -6,7 +6,7 @@
  */
 #include "SGBA.h"
 #include "wallfollowing_multiranger_onboard.h"
-
+#define __USE_MISC
 #include <math.h>
 #include <stdlib.h>
 
@@ -20,10 +20,13 @@ static float state_start_time;
 static bool first_run = true;
 static float ref_distance_from_wall = 0;
 static float max_speed = 0.5;
+static float local_direction = 1;
 
+/*
 //Make variable
 uint8_t rssi_threshold = 58;// normal batteries 50/52/53/53 bigger batteries 55/57/59
 // uint8_t rssi_collision_threshold = 50; // normal batteris 43/45/45/46 bigger batteries 48/50/52
+*/
 
 // Converts degrees to radians.
 #define deg2rad(angleDegrees) (angleDegrees * (float)M_PI / 180.0f)
@@ -159,11 +162,12 @@ static float fillHeadingArray(uint8_t *correct_heading_array, float rssi_heading
 static float wanted_angle = 0;
 
 void init_SGBA_controller(float new_ref_distance_from_wall, float max_speed_ref,
-                                       float begin_wanted_heading)
+                                       float begin_wanted_heading, float starting_local_direction)
 {
   ref_distance_from_wall = new_ref_distance_from_wall;
   max_speed = max_speed_ref;
-  wanted_angle = begin_wanted_heading;
+  wanted_angle = deg2rad(begin_wanted_heading);
+  local_direction = starting_local_direction;
   first_run = true;
 }
 
@@ -171,7 +175,7 @@ void init_SGBA_controller(float new_ref_distance_from_wall, float max_speed_ref,
 int SGBA_controller(float *vel_x, float *vel_y, float *vel_w, float *rssi_angle, int *state_wallfollowing,
                                  float front_range, float left_range, float right_range, float back_range,
                                  float current_heading, float current_pos_x, float current_pos_y, uint8_t rssi_beacon,
-                                 uint8_t rssi_inter, float rssi_angle_inter, bool priority, bool outbound)
+                                 uint8_t rssi_inter, float rssi_angle_inter, bool priority, bool outbound, float drone_dist_from_wall)
 {
 
   // Initalize static variables
@@ -255,7 +259,7 @@ int SGBA_controller(float *vel_x, float *vel_y, float *vel_w, float *rssi_angle,
       pos_y_hit = current_pos_y;
       wanted_angle_hit = wanted_angle;
 
-      wall_follower_init(0.4, 0.5, 3);
+      wall_follower_init(drone_dist_from_wall, drone_speed, 3);
 
       for (int it = 0; it < 8; it++) { correct_heading_array[it] = 0; }
 
@@ -267,7 +271,7 @@ int SGBA_controller(float *vel_x, float *vel_y, float *vel_w, float *rssi_angle,
     bool goal_check = logicIsCloseTo(wraptopi(current_heading - wanted_angle), 0, 0.1f);
     if (front_range < ref_distance_from_wall + 0.2f) {
       cannot_go_to_goal =  true;
-      wall_follower_init(0.4, 0.5, 3);
+      wall_follower_init(drone_dist_from_wall, drone_speed, 3);
 
       state = transition(3); //wall_following
 
@@ -278,7 +282,7 @@ int SGBA_controller(float *vel_x, float *vel_y, float *vel_w, float *rssi_angle,
   } else if (state == 3) {      //WALL_FOLLOWING
 
     // if another drone is close and there is no right of way, move out of the way
-    if (priority == false && rssi_inter < rssi_threshold) {
+    if (priority == false && rssi_inter < rssi_collision_threshold) {
       if (outbound) {
         if ((rssi_angle_inter < 0 && wanted_angle < 0) || (rssi_angle_inter > 0 && wanted_angle > 0)) {
           wanted_angle = -1 * wanted_angle;
@@ -387,15 +391,15 @@ int SGBA_controller(float *vel_x, float *vel_y, float *vel_w, float *rssi_angle,
   float temp_vel_w = 0;
 
   if (state == 1) {        //FORWARD
-    // stop moving if there is another drone in the way
-    // forward max speed
-    if (left_range < ref_distance_from_wall) {
-      temp_vel_y = -0.2f;
-    }
-    if (right_range < ref_distance_from_wall) {
-      temp_vel_y = 0.2f;
-    }
-    temp_vel_x = 0.5;
+    // // stop moving if there is another drone in the way
+    // // forward max speed
+    // if (left_range < ref_distance_from_wall) {
+    //   temp_vel_y = -0.2f;
+    // }
+    // if (right_range < ref_distance_from_wall) {
+    //   temp_vel_y = 0.2f;
+    // }
+    temp_vel_x = max_speed;
     //}
 
   } else  if (state == 2) {  //ROTATE_TO_GOAL
@@ -409,25 +413,25 @@ int SGBA_controller(float *vel_x, float *vel_y, float *vel_w, float *rssi_angle,
 
   } else  if (state == 3) {       //WALL_FOLLOWING
     //Get the values from the wallfollowing
-    if (direction == -1) {
-      state_wf = wall_follower(&temp_vel_x, &temp_vel_y, &temp_vel_w, front_range, left_range, current_heading, direction);
+    if (local_direction == -1) {
+      state_wf = wall_follower(&temp_vel_x, &temp_vel_y, &temp_vel_w, front_range, left_range, current_heading, local_direction);
     } else {
-      state_wf = wall_follower(&temp_vel_x, &temp_vel_y, &temp_vel_w, front_range, right_range, current_heading, direction);
+      state_wf = wall_follower(&temp_vel_x, &temp_vel_y, &temp_vel_w, front_range, right_range, current_heading, local_direction);
     }
   } else if (state == 4) {      //MOVE_AWAY
 
-    float save_distance = 0.7f;
+    float save_distance = 1.0f;
     if (left_range < save_distance) {
-      temp_vel_y = temp_vel_y - 0.5f;
+      temp_vel_y = temp_vel_y - 0.1f;
     }
     if (right_range < save_distance) {
-      temp_vel_y = temp_vel_y + 0.5f;
+      temp_vel_y = temp_vel_y + 0.1f;
     }
     if (front_range < save_distance) {
-      temp_vel_x = temp_vel_x - 0.5f;
+      temp_vel_x = temp_vel_x - 0.1f;
     }
     if (back_range < save_distance) {
-      temp_vel_x = temp_vel_x + 0.5f;
+      temp_vel_x = temp_vel_x + 0.1f;
     }
 
   }
