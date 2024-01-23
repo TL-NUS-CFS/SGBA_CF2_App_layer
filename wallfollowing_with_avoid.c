@@ -7,11 +7,18 @@
 
 #include "wallfollowing_multiranger_onboard.h"
 #include "wallfollowing_with_avoid.h"
+// #include "drone_variables.h"
 
 #include <math.h>
 #include "usec_time.h"
 
+<<<<<<< HEAD
 static float state_start_time;
+=======
+#include "debug.h"
+
+float state_start_time;
+>>>>>>> tamie
 
 //static variables only used for initialization
 static bool first_run = true;
@@ -38,13 +45,13 @@ void init_wall_follower_and_avoid_controller(float new_ref_distance_from_wall, f
 }
 
 
-int wall_follower_and_avoid_controller(float *vel_x, float *vel_y, float *vel_w, float front_range, float left_range,
+int wall_follower_and_avoid_controller(float *vel_x, float *vel_y, float *vel_w, float *height, float front_range, float left_range,
         float right_range,  float current_heading, uint8_t rssi_other_drone)
 {
 
     // Initalize static variables
     static int state = 1;
-    static int rssi_collision_threshold = 43;
+    // static int rssi_collision_threshold = 60;
 
     // if it is reinitialized
     if (first_run) {
@@ -77,6 +84,7 @@ int wall_follower_and_avoid_controller(float *vel_x, float *vel_y, float *vel_w,
 
         if (rssi_other_drone < rssi_collision_threshold) {
             state = transition(3);
+            DEBUG_PRINT("wallfollow_w_avoid: Transition to state 3 = move out of way\n");
         }
     } else if (state == 3) { //MOVE_OUT_OF_WAY
         if (rssi_other_drone > rssi_collision_threshold) {
@@ -91,6 +99,7 @@ int wall_follower_and_avoid_controller(float *vel_x, float *vel_y, float *vel_w,
     float temp_vel_x = 0;
     float temp_vel_y = 0;
     float temp_vel_w = 0;
+    float temp_height = nominal_height;
 
     if (state == 1) {        //FORWARD
         // forward max speed
@@ -105,21 +114,31 @@ int wall_follower_and_avoid_controller(float *vel_x, float *vel_y, float *vel_w,
         }
     } else if (state == 3) {       //MOVE_OUT_OF_WAY
 
-        float save_distance = 0.7f;
-        if (left_range < save_distance) {
-            temp_vel_y = temp_vel_y - 0.5f;
-        }
-        if (right_range < save_distance) {
-            temp_vel_y = temp_vel_y + 0.5f;
-        }
-        if (front_range < save_distance) {
-            temp_vel_x = temp_vel_x - 0.5f;
-        }
+        // float save_distance = 0.7f;
+        // if (left_range < save_distance) {
+        //     temp_vel_y = temp_vel_y - 0.5f;
+        //     DEBUG_PRINT("move right\n");
+        // }
+        // if (right_range < save_distance) {
+        //     temp_vel_y = temp_vel_y + 0.5f;
+        //     DEBUG_PRINT("move left\n");
+        // }
+        // if (front_range < save_distance) {
+        //     temp_vel_x = temp_vel_x - 0.5f;
+        //     DEBUG_PRINT("move back\n");
+
+        // }
+
+        temp_height = CA_height;
+
+        DEBUG_PRINT("wallfollow_w_avoid: move out of way\n");
+
     }
 
     *vel_x = temp_vel_x;
     *vel_y = temp_vel_y;
     *vel_w = temp_vel_w;
+    *height = temp_height;
 
     return state;
 }

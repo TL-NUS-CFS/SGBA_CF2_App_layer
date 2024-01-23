@@ -3,7 +3,7 @@ import time
 
 cr = Crazyradio(devid=0)
 
-cr.set_channel(120)
+cr.set_channel(80)
 cr.set_data_rate(cr.DR_2MPS)
 
 for i in range(5):

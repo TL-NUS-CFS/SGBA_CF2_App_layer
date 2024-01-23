@@ -3,6 +3,11 @@
 bin/*
 cf2.*
 version.c
+<<<<<<< HEAD
 *.o
 .*.o.cmd
 build
+=======
+/.vscode/
+Makefile
+>>>>>>> tamie

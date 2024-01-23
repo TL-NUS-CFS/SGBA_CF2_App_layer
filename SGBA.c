@@ -7,6 +7,7 @@
 #include "SGBA.h"
 #include "wallfollowing_multiranger_onboard.h"
 
+#define __USE_MISC
 #include <math.h>
 #include <stdlib.h>
 
@@ -23,7 +24,7 @@ static float max_speed = 0.5;
 
 //Make variable
 uint8_t rssi_threshold = 58;// normal batteries 50/52/53/53 bigger batteries 55/57/59
-uint8_t rssi_collision_threshold = 50; // normal batteris 43/45/45/46 bigger batteries 48/50/52
+// uint8_t rssi_collision_threshold = 50; // normal batteris 43/45/45/46 bigger batteries 48/50/52
 
 // Converts degrees to radians.
 #define deg2rad(angleDegrees) (angleDegrees * (float)M_PI / 180.0f)

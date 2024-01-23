@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "debug.h": "c",
+        "math.h": "c",
+        "drone_variables.h": "c"
+    }
+}

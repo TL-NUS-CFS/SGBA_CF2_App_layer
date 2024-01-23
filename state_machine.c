@@ -8,6 +8,7 @@
 
 #include <string.h>
 #include <errno.h>
+#define __USE_MISC
 #include <math.h>
 
 #include "FreeRTOS.h"
@@ -24,6 +25,7 @@
 #include "estimator_kalman.h"
 #include "stabilizer.h"
 
+// #include "drone_variables.h"
 #include "wallfollowing_multiranger_onboard.h"
 #include "wallfollowing_with_avoid.h"
 #include "SGBA.h"
@@ -36,7 +38,12 @@
 #include "configblock.h"
 #include "debug.h"
 
+<<<<<<< HEAD
 #define DEBUG_MODULE "SGBA"
+=======
+// #define DEBUG_MODULE "STATE MACHINE"
+#include "debug.h"
+>>>>>>> tamie
 
 #define STATE_MACHINE_COMMANDER_PRI 3
 
@@ -46,14 +53,17 @@ static bool keep_flying = false;
 float height;
 
 static bool taken_off = false;
+<<<<<<< HEAD
 static float nominal_height = 0.5;
+=======
+>>>>>>> tamie
 
 // Switch to multiple methods, that increases in complexity
 //1= wall_following: Go forward and follow walls with the multiranger
 //2=wall following with avoid: This also follows walls but will move away if another crazyflie with an lower ID is coming close,
 //3=SGBA: The SGBA method that incorperates the above methods.
 //        NOTE: the switching between outbound and inbound has not been implemented yet
-#define METHOD 1
+#define METHOD 2
 
 
 void p2pcallbackHandler(P2PPacket *p);
@@ -68,7 +78,7 @@ static uint8_t rssi_beacon_filtered;
 
 static uint8_t id_inter_ext;
 static setpoint_t setpoint_BG;
-static float vel_x_cmd, vel_y_cmd, vel_w_cmd;
+static float vel_x_cmd, vel_y_cmd, vel_w_cmd, height_cmd;
 static float heading_rad;
 static float right_range;
 static float front_range;
@@ -77,6 +87,7 @@ static float up_range;
 static float back_range;
 static float rssi_angle;
 static int state;
+
 #if METHOD == 3
 static int state_wf;
 #endif
@@ -352,6 +363,7 @@ void appMain(void *param)
          */
     	  vel_w_cmd = 0;
         hover(&setpoint_BG, nominal_height);
+        DEBUG_PRINT("state_machine: Hover at nominal_height\n");
 
 #if METHOD == 1 //WALL_FOLLOWING
         // wall following state machine
@@ -362,7 +374,7 @@ void appMain(void *param)
             rssi_inter_filtered = 140;
         }
 
-        state = wall_follower_and_avoid_controller(&vel_x_cmd, &vel_y_cmd, &vel_w_cmd, front_range, left_range, right_range,
+        state = wall_follower_and_avoid_controller(&vel_x_cmd, &vel_y_cmd, &vel_w_cmd, &height_cmd, front_range, left_range, right_range,
                 heading_rad, rssi_inter_filtered);
 #endif
 #if METHOD==3 // SwWARM GRADIENT BUG ALGORITHM
@@ -395,7 +407,7 @@ void appMain(void *param)
         float vel_x_cmd_convert =  cosf(-psi) * vel_x_cmd + sinf(-psi) * vel_y_cmd;
         float vel_y_cmd_convert = -sinf(-psi) * vel_x_cmd + cosf(-psi) * vel_y_cmd;*/
         //float vel_y_cmd_convert = -1 * vel_y_cmd;
-        vel_command(&setpoint_BG, vel_x_cmd, vel_y_cmd, vel_w_cmd_convert, nominal_height);
+        vel_command(&setpoint_BG, vel_x_cmd, vel_y_cmd, vel_w_cmd_convert, height_cmd);
         on_the_ground = false;
       } else {
         /*
@@ -411,13 +423,17 @@ void appMain(void *param)
 
 
 #if METHOD==1 // wall following
+<<<<<<< HEAD
           wall_follower_init(0.6, 0.3, 1);
+=======
+          wall_follower_init(drone_dist_from_wall, drone_speed, 1);
+>>>>>>> tamie
 #endif
 #if METHOD==2 // wallfollowing with avoid
           if (my_id%2==1)
-          init_wall_follower_and_avoid_controller(0.4, 0.5, -1);
+          init_wall_follower_and_avoid_controller(drone_dist_from_wall, drone_speed, -1);
           else
-          init_wall_follower_and_avoid_controller(0.4, 0.5, 1);
+          init_wall_follower_and_avoid_controller(drone_dist_from_wall, drone_speed, 1);
 
 #endif
 #if METHOD==3 // Swarm Gradient Bug Algorithm
@@ -477,6 +493,7 @@ void appMain(void *param)
     if (usecTimestamp() >= radioSendBroadcastTime + 1000*500) {
         radiolinkSendP2PPacketBroadcast(&p_reply);
         radioSendBroadcastTime = usecTimestamp();
+        DEBUG_PRINT("state_machine: Broadcasting RSSI\n");
     }
 
 #endif
@@ -517,6 +534,7 @@ void p2pcallbackHandler(P2PPacket *p)
     }
     else{
         rssi_inter = p->rssi;
+        DEBUG_PRINT("state_machine: Received RSSI is %i\n", rssi_inter);
         memcpy(&rssi_angle_inter_ext, &p->data[1], sizeof(float));
 
         rssi_array_other_drones[id_inter_ext] = rssi_inter;
