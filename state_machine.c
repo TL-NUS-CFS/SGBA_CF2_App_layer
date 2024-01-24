@@ -495,16 +495,29 @@ void appMain(void *param)
 
 #endif
 #if METHOD==3 // Swarm Gradient Bug Algorithm
-          if (my_id == 4 || my_id == 8) {
-              init_SGBA_controller(drone_dist_from_wall_2, drone_speed, -0.8);
-          } else if (my_id == 2 || my_id == 6) {
-              init_SGBA_controller(drone_dist_from_wall_2, drone_speed, 0.8);
-          } else if (my_id == 3 || my_id == 7) {
-              init_SGBA_controller(drone_dist_from_wall_1, drone_speed, -2.4);
-          } else if (my_id == 5 || my_id == 9) {
-              init_SGBA_controller(drone_dist_from_wall_1, drone_speed, 2.4);
+
+          float angle_interval = (180.0f / (number_of_angles-1));
+
+          uint8_t my_id_dec = my_id;
+          if (my_id > 9) {
+            my_id_dec = my_id - 6;
+          } else if (my_id > 19) {
+            my_id_dec = my_id - 12;
+          } 
+
+          float heading = -90.0f + angle_interval * (my_id_dec % number_of_angles);
+          // float heading_180;
+          if (heading >= 0) {
+            heading = (heading / 180 - (int)(heading / 180)) * 180;
           } else {
-              init_SGBA_controller(drone_dist_from_wall_1, drone_speed, 0.8);
+            heading = (heading / 180 + (int)(heading / 180)) * 180;
+          }
+          if (my_id_dec % 2 == 1) {
+            DEBUG_PRINT("heading = %.2f\n", (double)heading);
+            init_SGBA_controller(drone_dist_from_wall_1, drone_speed, heading, -1);
+          } else {
+            DEBUG_PRINT("heading = %.2f\n", (double)heading);
+            init_SGBA_controller(drone_dist_from_wall_2, drone_speed, heading, 1);
           }
 
 
