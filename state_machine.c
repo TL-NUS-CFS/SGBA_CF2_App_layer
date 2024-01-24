@@ -451,7 +451,12 @@ void appMain(void *param)
 
         }
 */
-bool priority = true;
+        bool priority = false;
+        if (my_id % 2 == 1) {
+          priority = true;
+        } else {
+          priority = false;
+        }
 
         float drone_dist_from_wall;
         if (my_id % 2 == 1) {
@@ -519,6 +524,13 @@ bool priority = true;
           } 
 
           float heading = -90.0f + angle_interval * (my_id_dec % number_of_angles);
+          // float heading
+          if (heading >= 0) {
+              heading = (heading / 180 - (int)(heading / 180)) * 180;
+            } else {
+              heading = (heading / 180 + (int)(heading / 180)) * 180;
+            }
+
           if (my_id_dec % 2 == 1) {
             init_SGBA_controller(drone_dist_from_wall_1, drone_speed, heading, -1);
           } else {
