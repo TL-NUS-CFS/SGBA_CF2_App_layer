@@ -159,7 +159,6 @@ int wall_follower(float *vel_x, float *vel_y, float *vel_w, float front_range, f
     first_run = false;
   }
 
-
   /***********************************************************
    * State definitions
    ***********************************************************/
