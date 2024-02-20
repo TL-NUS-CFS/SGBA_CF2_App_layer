@@ -93,7 +93,7 @@ int wall_follower_and_avoid_controller(float *vel_x, float *vel_y, float *vel_w,
 
     if (state == 1) {        //FORWARD
         // forward max speed
-        // DEBUG_PRINT("wallfollow_w_avoid: STATE 1 FORWARD\n");
+        DEBUG_PRINT("wallfollow_w_avoid: STATE 1 FORWARD\n");
         temp_vel_x = max_speed;
 
     } else  if (state == 2) {       //WALL_FOLLOWING
