@@ -43,7 +43,8 @@
 
 static bool keep_flying = false;
 static bool is_flying = false;
-
+static bool move_away_from_walls = false;
+const float MIN_DISTANCE = 1.5; // m
 
 float height;
 
@@ -54,7 +55,7 @@ static bool taken_off = false;
 //2=wall following with avoid: This also follows walls but will move away if another crazyflie with an lower ID is coming close, 
 //3=SGBA: The SGBA method that incorperates the above methods.
 //        NOTE: the switching between outbound and inbound has not been implemented yet
-#define METHOD 3
+#define METHOD 2
 
 
 void p2pcallbackHandler(P2PPacket *p);
@@ -78,6 +79,7 @@ static float up_range;
 static float back_range;
 static float rssi_angle;
 static int state;
+
 
 #if METHOD == 3
 static int state_wf;
@@ -189,6 +191,15 @@ static int32_t find_minimum(uint8_t a[], int32_t n)
     return (number);
 
 }*/
+
+bool is_close(float range) {
+            if (range == NULL) {
+                return false; // at least 1.5m from wall 
+            } else {
+                return range < MIN_DISTANCE; // still too close to wall 
+            }
+}
+
 void appMain(void *param)
 {
   static struct MedianFilterFloat medFilt;
@@ -589,19 +600,58 @@ bool priority = true;
           }
 
       }
-    } else {
+    } else { //keep_flying == false
       if (taken_off) {
         /*
          * If the flight is given a not OK
          *  but the crazyflie  has already taken off
          *   then land
          */
-        land(&setpoint_BG, 0.2f);
-        if (height < 0.1f) {
-          shut_off_engines(&setpoint_BG);
-          taken_off = false;
+        
+        if (move_away_from_walls)
+        {
+          
+          
+          while (true) {
+            const float VELOCITY = 0.3; 
+            vel_x_cmd = 0; vel_y_cmd = 0;
+            
+            // check multiranger distance 
+            if (is_close(front_range)) {
+                vel_x_cmd -= VELOCITY;
+            }
+            if (is_close(back_range)) {
+                vel_x_cmd += VELOCITY;
+            }
+            if (is_close(left_range)) {
+                vel_y_cmd -= VELOCITY;
+            }
+            if (is_close(right_range)) {
+                vel_y_cmd += VELOCITY;
+            }
+
+            if (!is_close(front_range) &&
+            !is_close(back_range) &&
+            !is_close(left_range) &&
+            !is_close(right_range)) {
+              move_away_from_walls = false
+              break;
+            }
+          }
+          // NEED A WAY TO BRING ABOUT THE CHANGES IN VELOCITIES or is it already included in vel_cmd?
+
+
         }
-        on_the_ground = false;
+        else //original land logic
+        {
+          land(&setpoint_BG, 0.2f);
+          if (height < 0.1f) {
+            shut_off_engines(&setpoint_BG);
+            taken_off = false;
+          }
+          on_the_ground = false;
+        }
+        
 
       } else {
 
@@ -656,7 +706,15 @@ void p2pcallbackHandler(P2PPacket *p)
         //if 3rd byte of packet = 0xff or = drone's ID
         if (p->data[2] == 0xff || p->data[2] == my_id) 
         {
-         keep_flying =  p->data[1]; 
+         if (p->data[1] == 0 || p->data[1] == 1)
+         {
+          keep_flying =  p->data[1];
+         }
+         else if (p->data[1] == 2)
+         {
+          keep_flying = false;
+          move_away_from_walls = true;
+         }
         }
 
         // if (p->data[2] == my_id){

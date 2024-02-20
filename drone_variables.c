@@ -4,7 +4,7 @@
 
 float drone_dist_from_wall_1 = 0.6;
 float drone_dist_from_wall_2 = 1.2;
-float drone_speed = 0.3;
+float drone_speed = 0.1;
 
 int rssi_collision_threshold = 60;
 float rssi_reset_interval = 3.0;
