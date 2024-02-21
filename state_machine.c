@@ -193,11 +193,7 @@ static int32_t find_minimum(uint8_t a[], int32_t n)
 }*/
 
 bool is_close(float range) {
-            if (range == NULL) {
-                return false; // at least 1.5m from wall 
-            } else {
-                return range < MIN_DISTANCE; // still too close to wall 
-            }
+  return range < MIN_DISTANCE; // still too close to wall 
 }
 
 void appMain(void *param)
@@ -609,14 +605,17 @@ bool priority = true;
          */
         
         if (move_away_from_walls)
+        DEBUG_PRINT("MOVE AWAY FROM WALLS AND LAND")
         {
           
           
-          while (true) {
-            const float VELOCITY = 0.3; 
-            vel_x_cmd = 0; vel_y_cmd = 0;
-            
-            // check multiranger distance 
+         
+          const float VELOCITY = 0.3; 
+          vel_x_cmd = 0; vel_y_cmd = 0;
+
+          // check multiranger distance
+          if (is_close(front_range) || is_close(back_range) || is_close(left_range) || is_close(right_range)) {
+           
             if (is_close(front_range)) {
                 vel_x_cmd -= VELOCITY;
             }
@@ -629,19 +628,19 @@ bool priority = true;
             if (is_close(right_range)) {
                 vel_y_cmd += VELOCITY;
             }
-
-            if (!is_close(front_range) &&
-            !is_close(back_range) &&
-            !is_close(left_range) &&
-            !is_close(right_range)) {
-              move_away_from_walls = false
-              break;
-            }
           }
-          // NEED A WAY TO BRING ABOUT THE CHANGES IN VELOCITIES or is it already included in vel_cmd?
 
-
+          else{
+            move_away_from_walls = false;
+          }
+          
+          float vel_w_cmd_convert = vel_w_cmd * 180.0f / (float)M_PI;
+          vel_command(&setpoint_BG, vel_x_cmd, vel_y_cmd, vel_w_cmd_convert, nominal_height);
         }
+          // NEED A WAY TO BRING ABOUT THE CHANGES IN VELOCITIES or is it already included in vel_cmd?
+         
+
+      
         else //original land logic
         {
           land(&setpoint_BG, 0.2f);
@@ -650,8 +649,9 @@ bool priority = true;
             taken_off = false;
           }
           on_the_ground = false;
-        }
-        
+        } //else original land topic
+      
+
 
       } else {
 
