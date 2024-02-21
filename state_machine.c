@@ -604,45 +604,49 @@ bool priority = true;
          *   then land
          */
         
-        if (move_away_from_walls)
-        DEBUG_PRINT("MOVE AWAY FROM WALLS AND LAND")
-        {
-          
-          
-         
-          const float VELOCITY = 0.3; 
+        if (move_away_from_walls) {
+        DEBUG_PRINT("MOVE AWAY FROM WALLS AND LAND \n");
+        
+          const float VELOCITY = 0.1; 
           vel_x_cmd = 0; vel_y_cmd = 0;
 
           // check multiranger distance
           if (is_close(front_range) || is_close(back_range) || is_close(left_range) || is_close(right_range)) {
+            DEBUG_PRINT("if \n");
            
             if (is_close(front_range)) {
+                DEBUG_PRINT("Move Backwards\n");
                 vel_x_cmd -= VELOCITY;
             }
             if (is_close(back_range)) {
+                DEBUG_PRINT("Move Forward\n");
                 vel_x_cmd += VELOCITY;
             }
             if (is_close(left_range)) {
+                DEBUG_PRINT("Move Right\n");
                 vel_y_cmd -= VELOCITY;
             }
             if (is_close(right_range)) {
+                DEBUG_PRINT("Move Left\n");
                 vel_y_cmd += VELOCITY;
             }
           }
 
           else{
             move_away_from_walls = false;
+            DEBUG_PRINT("Finish moving away\n");
           }
           
           float vel_w_cmd_convert = vel_w_cmd * 180.0f / (float)M_PI;
           vel_command(&setpoint_BG, vel_x_cmd, vel_y_cmd, vel_w_cmd_convert, nominal_height);
         }
-          // NEED A WAY TO BRING ABOUT THE CHANGES IN VELOCITIES or is it already included in vel_cmd?
+  
          
 
       
         else //original land logic
         {
+          DEBUG_PRINT("LANDING\n");
           land(&setpoint_BG, 0.2f);
           if (height < 0.1f) {
             shut_off_engines(&setpoint_BG);
