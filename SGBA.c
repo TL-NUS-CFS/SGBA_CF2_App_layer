@@ -221,7 +221,7 @@ int SGBA_controller(float *vel_x, float *vel_y, float *vel_w, float *rssi_angle,
   }
 
   if (first_time_inbound) {
-    wraptopi(wanted_angle - 3.14f);
+    // wraptopi(wanted_angle - 3.14f);
     wanted_angle_dir = wraptopi(current_heading - wanted_angle);
     state = transition(2);
     first_time_inbound = false;
@@ -239,6 +239,7 @@ int SGBA_controller(float *vel_x, float *vel_y, float *vel_w, float *rssi_angle,
    * Handle state transitions
    ***********************************************************/
   DEBUG_PRINT("front range: %f\n", (double)front_range);
+  
 
   if (state == 1) {     //FORWARD
     if (front_range < ref_distance_from_wall + 0.2f) {
@@ -247,30 +248,30 @@ int SGBA_controller(float *vel_x, float *vel_y, float *vel_w, float *rssi_angle,
       if (overwrite_and_reverse_direction) {
         // direction = -1.0f * direction;
         // Method 1
-        // if (wanted_heading >= 0) {
-        //     wanted_angle = deg2rad(wanted_heading - 180);
-        //   } else {
-        //     wanted_angle = deg2rad(wanted_heading - 180);
-        //   }
-        //Method 2
-        local_direction = -1 * local_direction;
-        overwrite_and_reverse_direction = false;
-        DEBUG_PRINT("local_direction = %.2f\n", (double)local_direction);
-      } else {
-        if (left_range < right_range && left_range < 2.0f) {
-          local_direction = -1.0f;
-        } else if (left_range > right_range && right_range < 2.0f) {
-          local_direction = 1.0f;
-
-        } else if (left_range > 2.0f && right_range > 2.0f) {
-          local_direction = 1.0f;
+        if (wanted_angle > 0) {
+          wanted_angle = wanted_angle - (float)M_PI;
         } else {
-
+          wanted_angle = (float)(-1*M_PI) - wanted_angle;
         }
-      }
+        DEBUG_PRINT("wanted_angle changed to = %.2f\n", (double)wanted_angle);
+        //Method 2
+        // local_direction = -1 * local_direction;
+        overwrite_and_reverse_direction = false;
+        // DEBUG_PRINT("local_direction = %.2f\n", (double)local_direction);
+      } 
+      // else {
+      //   if (left_range < right_range && left_range < 2.0f) {
+      //     local_direction = -1.0f;
+      //   } else if (left_range > right_range && right_range < 2.0f) {
+      //     local_direction = 1.0f;
 
-      
-      DEBUG_PRINT("wanted_angle = %.2f\n", (double)wanted_angle);
+      //   } else if (left_range > 2.0f && right_range > 2.0f) {
+      //     local_direction = 1.0f;
+      //   } else {
+
+      //   }
+      // }
+      DEBUG_PRINT("wanted_angle (forward)= %.2f\n", (double)wanted_angle);
       pos_x_hit = current_pos_x;
       pos_y_hit = current_pos_y;
       wanted_angle_hit = wanted_angle;
@@ -284,6 +285,7 @@ int SGBA_controller(float *vel_x, float *vel_y, float *vel_w, float *rssi_angle,
     }
   } else if (state == 2) { //ROTATE_TO_GOAL
     // check if heading is close to the preferred_angle
+    DEBUG_PRINT("wanted_angle (rotate to goal)= %.2f\n", (double)wanted_angle);
     bool goal_check = logicIsCloseTo(wraptopi(current_heading - wanted_angle), 0, 0.1f);
     if (front_range < ref_distance_from_wall + 0.2f) {
       cannot_go_to_goal =  true;

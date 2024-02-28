@@ -319,6 +319,22 @@ void appMain(void *param)
       up_range = (float)rangeGet(rangeUp) / 1000.0f;
     }
 
+    if (front_range > 4.0f) {
+      front_range = 4.0f;
+    }
+    if (right_range > 4.0f) {
+      right_range = 4.0f;
+    }
+    if (left_range > 4.0f) {
+      left_range = 4.0f;
+    }
+    if(back_range > 4.0f) {
+      back_range = 4.0f;
+    }
+    if (up_range > 4.0f) {
+      up_range = 4.0f;
+    } 
+
 
     // Get position estimate of kalman filter
     point_t pos;
@@ -509,7 +525,7 @@ bool priority = true;
 #endif
 #if METHOD==3 // Swarm Gradient Bug Algorithm
 
-          float angle_interval = (180.0f / (number_of_angles-1));
+          // float angle_interval = (180.0f / (number_of_angles-1));
 
           uint8_t my_id_dec = my_id;
           if (my_id > 9) {
@@ -520,28 +536,29 @@ bool priority = true;
           DEBUG_PRINT("id = %i\n", my_id_dec);
 
           // Testing
-          float heading = -90.0f + angle_interval * (my_id_dec % number_of_angles);
-          // float heading_180;
-          if (heading >= 0) {
-            heading = (heading / 180 - (int)(heading / 180)) * 180;
-          } else {
-            heading = (heading / 180 + (int)(heading / 180)) * 180;
-          }
+          // float heading = -90.0f + angle_interval * (my_id_dec % number_of_angles);
+          // // float heading_180;
+          // if (heading >= 0) {
+          //   heading = (heading / 180 - (int)(heading / 180)) * 180;
+          // } else {
+          //   heading = (heading / 180 + (int)(heading / 180)) * 180;
+          // }
 
           // 8 and 9 directions
-          // static float heading[15] = { -69.0f, -48.0f, -27.0f, -6.0f, 15.0f, 36.0f, 57.0f, 78.0f, -66.0f, -42.0f, -18.0f, 6.0f, 30.0f, 54.0f, 78.0f};
-          DEBUG_PRINT("heading = %.2f\n", (double)heading);
-          if (my_id_dec % 2 == 1) {
-            init_SGBA_controller(drone_dist_from_wall_1, drone_speed, heading, -1);
-          } else {
-            init_SGBA_controller(drone_dist_from_wall_2, drone_speed, heading, 1);
-          }
-
+          // DEBUG_PRINT("heading = %.2f\n", (double)heading);
           // if (my_id_dec % 2 == 1) {
-          //   init_SGBA_controller(drone_dist_from_wall_1, drone_speed, heading[my_id_dec - 1], -1);
+          //   init_SGBA_controller(drone_dist_from_wall_1, drone_speed, heading, -1);
           // } else {
-          //   init_SGBA_controller(drone_dist_from_wall_2, drone_speed, heading[my_id_dec - 1], 1);
+          //   init_SGBA_controller(drone_dist_from_wall_2, drone_speed, heading, 1);
           // }
+
+          static float heading[15] = { -69.0f, -48.0f, -27.0f, -6.0f, 15.0f, 36.0f, 57.0f, 78.0f, -66.0f, -42.0f, -18.0f, 6.0f, 30.0f, 54.0f, 78.0f};
+          DEBUG_PRINT("heading = %.2f\n", (double)heading[my_id_dec - 1]);
+          if (my_id_dec % 2 == 1) {
+            init_SGBA_controller(drone_dist_from_wall_1, drone_speed, heading[my_id_dec - 1], -1);
+          } else {
+            init_SGBA_controller(drone_dist_from_wall_2, drone_speed, heading[my_id_dec - 1], 1);
+          }
           
 
 #endif
