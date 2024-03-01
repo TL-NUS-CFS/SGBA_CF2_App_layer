@@ -59,7 +59,7 @@ static bool taken_off = false;
 //2=wall following with avoid: This also follows walls but will move away if another crazyflie with an lower ID is coming close,
 //3=SGBA: The SGBA method that incorperates the above methods.
 //        NOTE: the switching between outbound and inbound has not been implemented yet
-#define METHOD 2
+#define METHOD 3
 
 
 void p2pcallbackHandler(P2PPacket *p);
@@ -344,6 +344,22 @@ void appMain(void *param)
       up_range = (float)rangeGet(rangeUp) / 1000.0f;
     }
 
+    if (front_range > 4.0f) {
+      front_range = 4.0f;
+    }
+    if (right_range > 4.0f) {
+      right_range = 4.0f;
+    }
+    if (left_range > 4.0f) {
+      left_range = 4.0f;
+    }
+    if(back_range > 4.0f) {
+      back_range = 4.0f;
+    }
+    if (up_range > 4.0f) {
+      up_range = 4.0f;
+    } 
+
 
     // Get position estimate of kalman filter
     point_t pos;
@@ -404,6 +420,7 @@ void appMain(void *param)
     state = 0;
 
 
+/*
 
 // Check RSSI of higher priority drones
     //DEBUG_PRINT("Checking RSSI\n");
@@ -425,6 +442,7 @@ void appMain(void *param)
 
     //DEBUG_PRINT("Passed in rssi = %d\n", (int)rssi_inter_filtered);
 
+*/
 
 
 
@@ -465,7 +483,7 @@ void appMain(void *param)
 #if METHOD==3 // SwWARM GRADIENT BUG ALGORITHM
 
 
-
+/*
         bool priority = false;
         if (id_inter_closest > my_id) {
           priority = true;
@@ -473,10 +491,21 @@ void appMain(void *param)
           priority = false;
 
         }
+*/
+bool priority = true;
+
+        float drone_dist_from_wall;
+        if (my_id % 2 == 1) {
+          drone_dist_from_wall = drone_dist_from_wall_1;
+        }
+        else {
+          drone_dist_from_wall = drone_dist_from_wall_2;
+        }
+
         //TODO make outbound depended on battery.
         state = SGBA_controller(&vel_x_cmd, &vel_y_cmd, &vel_w_cmd, &rssi_angle, &state_wf, front_range,
                                              left_range, right_range, back_range, heading_rad,
-                                             (float)pos.x, (float)pos.y, rssi_beacon_filtered, rssi_inter_filtered, rssi_angle_inter_closest, priority, outbound);
+                                             (float)pos.x, (float)pos.y, rssi_beacon_filtered, rssi_inter_filtered, rssi_angle_inter_closest, priority, outbound, drone_dist_from_wall);
 
         memcpy(&p_reply.data[1],&rssi_angle, sizeof(float));
 
@@ -520,18 +549,42 @@ void appMain(void *param)
 
 #endif
 #if METHOD==3 // Swarm Gradient Bug Algorithm
-          if (my_id == 4 || my_id == 8) {
-              init_SGBA_controller(drone_dist_from_wall_2, drone_speed, -0.8);
-          } else if (my_id == 2 || my_id == 6) {
-              init_SGBA_controller(drone_dist_from_wall_2, drone_speed, 0.8);
-          } else if (my_id == 3 || my_id == 7) {
-              init_SGBA_controller(drone_dist_from_wall_1, drone_speed, -2.4);
-          } else if (my_id == 5 || my_id == 9) {
-              init_SGBA_controller(drone_dist_from_wall_1, drone_speed, 2.4);
-          } else {
-              init_SGBA_controller(drone_dist_from_wall_1, drone_speed, 0.8);
-          }
 
+          // float angle_interval = (180.0f / (number_of_angles-1));
+
+          uint8_t my_id_dec = my_id;
+          if (my_id > 9) {
+            my_id_dec = my_id - 6;
+          } else if (my_id > 19) {
+            my_id_dec = my_id - 12;
+          } 
+          DEBUG_PRINT("id = %i\n", my_id_dec);
+
+          // Testing
+          // float heading = -90.0f + angle_interval * (my_id_dec % number_of_angles);
+          // // float heading_180;
+          // if (heading >= 0) {
+          //   heading = (heading / 180 - (int)(heading / 180)) * 180;
+          // } else {
+          //   heading = (heading / 180 + (int)(heading / 180)) * 180;
+          // }
+
+          // 8 and 9 directions
+          // DEBUG_PRINT("heading = %.2f\n", (double)heading);
+          // if (my_id_dec % 2 == 1) {
+          //   init_SGBA_controller(drone_dist_from_wall_1, drone_speed, heading, -1);
+          // } else {
+          //   init_SGBA_controller(drone_dist_from_wall_2, drone_speed, heading, 1);
+          // }
+
+          static float heading[15] = { -69.0f, -48.0f, -27.0f, -6.0f, 15.0f, 36.0f, 57.0f, 78.0f, -66.0f, -42.0f, -18.0f, 6.0f, 30.0f, 54.0f, 78.0f};
+          DEBUG_PRINT("heading = %.2f\n", (double)heading[my_id_dec - 1]);
+          if (my_id_dec % 2 == 1) {
+            init_SGBA_controller(drone_dist_from_wall_1, drone_speed, heading[my_id_dec - 1], -1);
+          } else {
+            init_SGBA_controller(drone_dist_from_wall_2, drone_speed, heading[my_id_dec - 1], 1);
+          }
+          
 
 #endif
 
@@ -573,8 +626,7 @@ void appMain(void *param)
     }
 
 #if METHOD != 1
-
-    if (height > 0.2f && up_range > 0.2f) {
+    if (height > 0.25f && up_range > 0.2f) {
       // DEBUG_PRINT("height: %.2f\n", (double)height);
       // DEBUG_PRINT("up range: %.2f\n", (double)up_range);
       is_flying = true;
