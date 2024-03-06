@@ -160,6 +160,7 @@ static float fillHeadingArray(uint8_t *correct_heading_array, float rssi_heading
 
 // statemachine functions
 static float wanted_angle = 0;
+float wanted_heading;
 
 void init_SGBA_controller(float new_ref_distance_from_wall, float max_speed_ref,
                                        float begin_wanted_heading, float starting_local_direction)
@@ -167,6 +168,7 @@ void init_SGBA_controller(float new_ref_distance_from_wall, float max_speed_ref,
   ref_distance_from_wall = new_ref_distance_from_wall;
   max_speed = max_speed_ref;
   wanted_angle = deg2rad(begin_wanted_heading);
+  wanted_heading = begin_wanted_heading;
   local_direction = starting_local_direction;
   first_run = true;
 }
@@ -237,22 +239,23 @@ int SGBA_controller(float *vel_x, float *vel_y, float *vel_w, float *rssi_angle,
 
   if (state == 1) {     //FORWARD
     if (front_range < ref_distance_from_wall + 0.2f) {
-// // if looping is detected, reverse direction (only on outbound)
-//       if (overwrite_and_reverse_direction) {
-//         direction = -1.0f * direction;
-//         overwrite_and_reverse_direction = false;
-//       } else {
-//         if (left_range < right_range && left_range < 2.0f) {
-//           direction = -1.0f;
-//         } else if (left_range > right_range && right_range < 2.0f) {
-//           direction = 1.0f;
+// if looping is detected, reverse direction (only on outbound)
+      if (overwrite_and_reverse_direction) {
+        direction = -1.0f * direction;
+        local_direction = -1 * local_direction;
+        overwrite_and_reverse_direction = false;
+      } else {
+        if (left_range < right_range && left_range < 2.0f) {
+          local_direction = -1.0f;
+        } else if (left_range > right_range && right_range < 2.0f) {
+          local_direction = 1.0f;
 
-//         } else if (left_range > 2.0f && right_range > 2.0f) {
-//           direction = 1.0f;
-//         } else {
+        } else if (left_range > 2.0f && right_range > 2.0f) {
+          local_direction = 1.0f;
+        } else {
 
-//         }
-//       }
+        }
+      }
 
       pos_x_hit = current_pos_x;
       pos_y_hit = current_pos_y;
@@ -305,7 +308,7 @@ int SGBA_controller(float *vel_x, float *vel_y, float *vel_w, float *rssi_angle,
     // Check if the goal is reachable from the current point of view of the agent
     float bearing_to_goal = wraptopi(wanted_angle - current_heading);
     bool goal_check_WF = false;
-    if (direction == -1) {
+    if (local_direction == -1) {
       goal_check_WF = (bearing_to_goal < 0 && bearing_to_goal > -1.5f);
     } else {
       goal_check_WF = (bearing_to_goal > 0 && bearing_to_goal < 1.5f);
@@ -372,7 +375,7 @@ int SGBA_controller(float *vel_x, float *vel_y, float *vel_w, float *rssi_angle,
   } else if (state == 4) {    //MOVE_OUT_OF_WAY
     // once the drone has gone by, rotate to goal
     if (rssi_inter >= rssi_collision_threshold) {
-
+      DEBUG_PRINT("SGBA: Move out of way");
       state = transition(2); //rotate_to_goal
     }
 
@@ -412,9 +415,9 @@ int SGBA_controller(float *vel_x, float *vel_y, float *vel_w, float *rssi_angle,
   } else  if (state == 3) {       //WALL_FOLLOWING
     //Get the values from the wallfollowing
     if (local_direction == -1) {
-      state_wf = wall_follower(&temp_vel_x, &temp_vel_y, &temp_vel_w, front_range, left_range, current_heading, local_direction);
+      state_wf = wall_follower(&temp_vel_x, &temp_vel_y, &temp_vel_w, front_range, left_range, current_heading, local_direction, false);
     } else {
-      state_wf = wall_follower(&temp_vel_x, &temp_vel_y, &temp_vel_w, front_range, right_range, current_heading, local_direction);
+      state_wf = wall_follower(&temp_vel_x, &temp_vel_y, &temp_vel_w, front_range, right_range, current_heading, local_direction, false);
     }
     
   } else if (state == 4) {      //MOVE_AWAY
@@ -434,9 +437,9 @@ int SGBA_controller(float *vel_x, float *vel_y, float *vel_w, float *rssi_angle,
     }
 
     if (local_direction == -1) {
-      state_wf = wall_follower(&temp_vel_x, &temp_vel_y, &temp_vel_w, front_range, left_range, current_heading, local_direction);
+      state_wf = wall_follower(&temp_vel_x, &temp_vel_y, &temp_vel_w, front_range, left_range, current_heading, local_direction, true);
     } else {
-      state_wf = wall_follower(&temp_vel_x, &temp_vel_y, &temp_vel_w, front_range, right_range, current_heading, local_direction);
+      state_wf = wall_follower(&temp_vel_x, &temp_vel_y, &temp_vel_w, front_range, right_range, current_heading, local_direction, true);
     }
 
   }

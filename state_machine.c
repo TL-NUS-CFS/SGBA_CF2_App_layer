@@ -54,7 +54,7 @@ static bool taken_off = false;
 //2=wall following with avoid: This also follows walls but will move away if another crazyflie with an lower ID is coming close, 
 //3=SGBA: The SGBA method that incorperates the above methods.
 //        NOTE: the switching between outbound and inbound has not been implemented yet
-#define METHOD 3
+#define METHOD 2
 
 
 void p2pcallbackHandler(P2PPacket *p);
@@ -458,18 +458,18 @@ void appMain(void *param)
           priority = false;
         }
 
-        float drone_dist_from_wall;
-        if (my_id % 2 == 1) {
-          drone_dist_from_wall = drone_dist_from_wall_1;
-        }
-        else {
-          drone_dist_from_wall = drone_dist_from_wall_2;
-        }
+        // float drone_dist_from_wall;
+        // if (my_id % 2 == 1) {
+        //   drone_dist_from_wall = drone_dist_from_wall_1;
+        // }
+        // else {
+        //   drone_dist_from_wall = drone_dist_from_wall_2;
+        // }
 
         //TODO make outbound depended on battery.
         state = SGBA_controller(&vel_x_cmd, &vel_y_cmd, &vel_w_cmd, &rssi_angle, &state_wf, front_range,
                                              left_range, right_range, back_range, heading_rad,
-                                             (float)pos.x, (float)pos.y, rssi_beacon_filtered, rssi_inter_filtered, rssi_angle_inter_closest, priority, outbound, drone_dist_from_wall);
+                                             (float)pos.x, (float)pos.y, rssi_beacon_filtered, rssi_inter_filtered, rssi_angle_inter_closest, priority, outbound, drone_dist_from_wall_1);
 
         memcpy(&p_reply.data[1],&rssi_angle, sizeof(float));
 
@@ -531,11 +531,12 @@ void appMain(void *param)
               heading = (heading / 180 + (int)(heading / 180)) * 180;
             }
 
-          if (my_id_dec % 2 == 1) {
-            init_SGBA_controller(drone_dist_from_wall_1, drone_speed, heading, -1);
-          } else {
-            init_SGBA_controller(drone_dist_from_wall_2, drone_speed, heading, 1);
-          }
+          // if (my_id_dec % 2 == 1) {
+          //   init_SGBA_controller(drone_dist_from_wall_1, drone_speed, heading, -1);
+          // } else {
+          //   init_SGBA_controller(drone_dist_from_wall_2, drone_speed, heading, 1);
+          // }
+          init_SGBA_controller(drone_dist_from_wall_1, drone_speed, heading, 1);
 
           // DEBUG_PRINT("my_id = %i\n", my_id);
           // DEBUG_PRINT("my_id mod 5 = %i\n", my_id % 5);
@@ -631,7 +632,7 @@ void appMain(void *param)
 
 #if METHOD != 1
 
-    if (height > 0.2f && up_range > 0.2f) {
+    if (height > 0.25f && up_range > 0.2f) {
       // DEBUG_PRINT("height: %.2f\n", (double)height);
       // DEBUG_PRINT("up range: %.2f\n", (double)up_range);
       is_flying = true;

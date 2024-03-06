@@ -9,6 +9,7 @@
 #define __USE_MISC
 #include <math.h>
 #include "usec_time.h"
+#include "debug.h"
 
 // variables
 static float ref_distance_from_wall = 0;
@@ -66,15 +67,15 @@ static void commandAlignCorner(float *vel_y, float *vel_w, float ref_rate, float
                                float wanted_distance_from_corner)
 {
 
-  if (range > wanted_distance_from_corner + 0.3f) {
+  if (range > wanted_distance_from_corner + drone_dist_from_wall_corner_margin) {
     *vel_w = direction * ref_rate;
     *vel_y = 0;
 
   } else {
     if (range > wanted_distance_from_corner) {
-      *vel_y = direction * (-1 * max_speed / 3);
+      *vel_y = direction * (-1 * max_speed / drone_speed_corner_scale);
     } else {
-      *vel_y = direction * (max_speed / 3);
+      *vel_y = direction * (max_speed / drone_speed_corner_scale);
     }
     *vel_w = 0;
   }
@@ -92,13 +93,13 @@ static void commandHover(float *vel_x, float *vel_y, float *vel_w)
 static void commandForwardAlongWall(float *vel_x, float *vel_y, float range)
 {
   *vel_x = max_speed;
-  bool check_distance_wall = logicIsCloseTo(ref_distance_from_wall, range, 0.1);
+  bool check_distance_wall = logicIsCloseTo(ref_distance_from_wall, range, drone_dist_from_wall_forward_margin);
   *vel_y = 0;
   if (!check_distance_wall) {
     if (range > ref_distance_from_wall) {
-      *vel_y = direction * (-1 * max_speed / 2);
+      *vel_y = direction * (-1 * max_speed / drone_speed_forward_scale);
     } else {
-      *vel_y = direction * (max_speed / 2);
+      *vel_y = direction * (max_speed / drone_speed_forward_scale);
     }
   }
 }
@@ -107,15 +108,15 @@ static void commandTurnAroundCornerAndAdjust(float *vel_x, float *vel_y, float *
 {
   *vel_x = max_speed;
   *vel_w = direction * (-1 * (*vel_x) / radius);
-  bool check_distance_to_wall = logicIsCloseTo(ref_distance_from_wall, range, 0.1);
+  bool check_distance_to_wall = logicIsCloseTo(ref_distance_from_wall, range, drone_dist_from_wall_forward_margin);
   if (!check_distance_to_wall) {
     if (range > ref_distance_from_wall) {
-      *vel_y = direction * (-1 * max_speed / 3);
+      *vel_y = direction * (-1 * max_speed / drone_speed_corner_scale);
 
     }
 
     else {
-      *vel_y = direction * (max_speed / 3);
+      *vel_y = direction * (max_speed / drone_speed_corner_scale);
 
     }
 
@@ -142,7 +143,7 @@ void adjustDistanceWall(float distance_wall_new)
 }
 
 int wall_follower(float *vel_x, float *vel_y, float *vel_w, float front_range, float side_range, float current_heading,
-                  int direction_turn)
+                  int direction_turn, bool CA_mode)
 {
 
 
@@ -151,6 +152,12 @@ int wall_follower(float *vel_x, float *vel_y, float *vel_w, float front_range, f
   static float angle = 0;
   static bool around_corner_go_back = false;
   float now = usecTimestamp() / 1e6;
+
+  if (CA_mode == true) {
+    ref_distance_from_wall = drone_dist_from_wall_2;
+  } else {
+    ref_distance_from_wall = drone_dist_from_wall_1;
+  }
 
   if (first_run) {
     previous_heading = current_heading;
@@ -177,19 +184,19 @@ int wall_follower(float *vel_x, float *vel_y, float *vel_w, float front_range, f
   ***********************************************************/
 
   if (state == 1) {     //FORWARD
-    if (front_range < ref_distance_from_wall + 0.2f) {
+    if (front_range < ref_distance_from_wall + drone_dist_from_wall_to_start_margin) {
       state = transition(3);
     }
   } else if (state == 2) {  // HOVER
 
   } else if (state == 3) { // TURN_TO_FIND_WALL
     // check if wall is found
-    bool side_range_check = side_range < ref_distance_from_wall / (float)cos(0.78f) + 0.2f;
-    bool front_range_check = front_range < ref_distance_from_wall / (float)cos(0.78f) + 0.2f;
+    bool side_range_check = side_range < ref_distance_from_wall / (float)cos(0.78f) + drone_dist_from_wall_to_start_margin;
+    bool front_range_check = front_range < ref_distance_from_wall / (float)cos(0.78f) + drone_dist_from_wall_to_start_margin;
     if (side_range_check && front_range_check) {
       previous_heading = current_heading;
       angle = direction * (1.57f - (float)atan(front_range / side_range) + 0.1f);
-      state = transition(4); // go to turn_to_allign_to_wall
+      state = transition(4); // go to turn_to_align_to_wall
     }
     if (side_range < 1.0f && front_range > 2.0f) {
       //  around_corner_first_turn = true;
@@ -251,22 +258,25 @@ int wall_follower(float *vel_x, float *vel_y, float *vel_w, float front_range, f
   float temp_vel_w = 0;
 
   if (state == 1) {      //FORWARD
+    // DEBUG_PRINT("FORWARD\n");
     temp_vel_x = max_speed;
     temp_vel_y = 0.0;
     temp_vel_w = 0.0;
 
   } else if (state == 2) {  // HOVER
+    // DEBUG_PRINT("HOVER\n");
     commandHover(&temp_vel_x, &temp_vel_y, &temp_vel_w);
 
 
   } else if (state == 3) { // TURN_TO_FIND_WALL
+    // DEBUG_PRINT("TURN TO FIND WALL\n");
     commandTurn(&temp_vel_x, &temp_vel_w, max_rate);
     temp_vel_y = 0.0;
 
   } else if (state == 4) { //TURN_TO_ALLIGN_TO_WALL
 
 
-
+    // DEBUG_PRINT("TURN TO ALIGN TO WALL\n");
     if (now - state_start_time < 1.0f)
     {
       commandHover(&temp_vel_x, &temp_vel_y, &temp_vel_w);
@@ -276,6 +286,7 @@ int wall_follower(float *vel_x, float *vel_y, float *vel_w, float front_range, f
     }
 
   } else if (state == 5) {  //FORWARD_ALONG_WALL
+    // DEBUG_PRINT("FORWARD ALONG WALL\n");
     commandForwardAlongWall(&temp_vel_x, &temp_vel_y, side_range);
     temp_vel_w = 0.0f;
 
@@ -285,6 +296,7 @@ int wall_follower(float *vel_x, float *vel_y, float *vel_w, float front_range, f
     // If first time around corner
     //first try to find the corner again
 
+    // DEBUG_PRINT("ROTATE AROUND WALL\n");
     // if side range is larger than prefered distance from wall
     if (side_range > ref_distance_from_wall + 0.5f) {
 
@@ -309,16 +321,19 @@ int wall_follower(float *vel_x, float *vel_y, float *vel_w, float front_range, f
     }
 
   } else if (state == 7) {     //ROTATE_IN_CORNER
+    // DEBUG_PRINT("ROTATE IN CORNER\n");
     commandTurn(&temp_vel_x, &temp_vel_w, max_rate);
     temp_vel_y = 0;
 
   } else if (state == 8) { //FIND_CORNER
+    // DEBUG_PRINT("FIND CORNER\n");
     commandAlignCorner(&temp_vel_y, &temp_vel_w, -1 * max_rate, side_range, ref_distance_from_wall);
     temp_vel_x = 0;
   }
 
   else {
     //State does not exist so hover!!
+    // DEBUG_PRINT("ERROR ERROR HOVER\n");
     commandHover(&temp_vel_x, &temp_vel_y, &temp_vel_w);
   }
 

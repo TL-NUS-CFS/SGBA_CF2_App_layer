@@ -100,9 +100,9 @@ int wall_follower_and_avoid_controller(float *vel_x, float *vel_y, float *vel_w,
         //Get the values from the wallfollowing
         // DEBUG_PRINT("wallfollow_w_avoid: STATE 2 WALLFOLLOWING\n");
         if (local_direction == 1) {
-            wall_follower(&temp_vel_x, &temp_vel_y, &temp_vel_w, front_range, right_range, current_heading, local_direction);
+            wall_follower(&temp_vel_x, &temp_vel_y, &temp_vel_w, front_range, right_range, current_heading, local_direction, false);
         } else if (local_direction == -1) {
-            wall_follower(&temp_vel_x, &temp_vel_y, &temp_vel_w, front_range, left_range, current_heading, local_direction);
+            wall_follower(&temp_vel_x, &temp_vel_y, &temp_vel_w, front_range, left_range, current_heading, local_direction, false);
         }
     } else if (state == 3) {       //MOVE_OUT_OF_WAY
 
