@@ -663,10 +663,10 @@ bool priority = true;
 
         if (send_detection)
         {
-          //[id, command, unsigned char class, float confidence, float x, float y, float z]
+          //[uint8_t id, float rssi_angle, unsigned char class, float confidence, float x, float y, float z]
 
           //Copy detection class
-          static const uint8_t DETECTON_DATA_START = 2;
+          static const uint8_t DETECTON_DATA_START = sizeof(uint8_t) + sizeof(float);
           //Copy to p_reply and reset detection_data to invalid
           memcpy(&p_reply.data[DETECTON_DATA_START], &detection_data, DETECTION_DATA_SIZE);
 
