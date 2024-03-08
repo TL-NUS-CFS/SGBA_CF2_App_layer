@@ -37,6 +37,7 @@
 #include "debug.h"
 
 //CPX (for comms with AI deck)
+#include "app.h"
 #include "cpx.h"
 #include "cpx_internal_router.h"
 
@@ -102,18 +103,12 @@ static uint8_t id_inter_closest=100;
 
 static struct MedianFilterFloat medFiltDrones[40];
 
-
-//Object detection
-// static const uint8_t DETECTION_INDEX_X = 0;
-// static const uint8_t DATA_INDEX_Y = 1;
-// static const uint8_t DATA_INDEX_W = 2;
-// static const uint8_t DATA_INDEX_H = 3;
-// static const uint8_t DATA_INDEX_SCORE = 4;
-// static const uint8_t DETECTION_INDEX_SIZE = 5;
-
-#define DETECTION_ARRAY_SIZE 20
+//Data is [unsigned char, float] to represent class and confidence
 #define DETECTION_INVALID 255
-static uint8_t detection_data[DETECTION_ARRAY_SIZE] = { DETECTION_INVALID };
+
+//Assume sizeof(unsigned char) + sizeof(float) is 5
+#define DETECTION_DATA_SIZE 5
+static uint8_t detection_data[DETECTION_DATA_SIZE];
 static SemaphoreHandle_t detection_mutex = NULL;
 
 #define MANUAL_STARTUP_TIMEOUT  M2T(3000)
@@ -206,6 +201,26 @@ static int32_t find_minimum(uint8_t a[], int32_t n)
     return (number);
 
 }*/
+
+static void cpxPacketCallback(const CPXPacket_t* cpxRx)
+{
+  xSemaphoreTake(detection_mutex, 0);
+  memcpy(&detection_data, &cpxRx->data, DETECTION_DATA_SIZE);
+  xSemaphoreGive(detection_mutex);
+
+  //[unsigned char class, float confidence]
+  unsigned char class;
+  memcpy(&class, &detection_data[0], sizeof(class));
+
+  float confidence;
+  memcpy(&confidence, &detection_data[sizeof(unsigned char )], sizeof(float));
+
+  DEBUG_PRINT("[STM32 Recv] Class: %d, Confidence: %.3f\n",
+    class,
+    (double)confidence
+  );
+}
+
 void appMain(void *param)
 {
   static struct MedianFilterFloat medFilt;
@@ -219,7 +234,7 @@ void appMain(void *param)
   for (uint8_t i = 0; i < 40; i++)
     init_median_filter_f(&medFiltDrones[i], 5);
 
-  //Initialize detection mutex
+  //Initialize detection data buffer
   detection_data[0] = DETECTION_INVALID;
   detection_mutex = xSemaphoreCreateMutex();
 
@@ -358,7 +373,7 @@ void appMain(void *param)
     }
     if (up_range > 4.0f) {
       up_range = 4.0f;
-    } 
+    }
 
 
     // Get position estimate of kalman filter
@@ -557,7 +572,7 @@ bool priority = true;
             my_id_dec = my_id - 6;
           } else if (my_id > 19) {
             my_id_dec = my_id - 12;
-          } 
+          }
           DEBUG_PRINT("id = %i\n", my_id_dec);
 
           // Testing
@@ -584,7 +599,7 @@ bool priority = true;
           } else {
             init_SGBA_controller(drone_dist_from_wall_2, drone_speed, heading[my_id_dec - 1], 1);
           }
-          
+
 
 #endif
 
@@ -636,21 +651,51 @@ bool priority = true;
       is_flying = false;
     }
 
-    if ((usecTimestamp() >= radioSendBroadcastTime + 1000*500) && (is_flying == true)) {
+    //Test broadcast?
+    static const bool testBroadcast = true;
+    if (testBroadcast || ((usecTimestamp() >= radioSendBroadcastTime + 1000*500) && (is_flying == true))) {
         xSemaphoreTake(detection_mutex, 0); //lock detection_mutex
 
         const bool send_detection = detection_data[0] != DETECTION_INVALID;
 
+        static const size_t FLOAT_SIZE = sizeof(float);
+        static const size_t POS_SIZE = FLOAT_SIZE * 3;
+
         if (send_detection)
         {
+          //[id, command, unsigned char class, float confidence, float x, float y, float z]
+
+          //Copy detection class
+          static const uint8_t DETECTON_DATA_START = 2;
           //Copy to p_reply and reset detection_data to invalid
-          memcpy(&p_reply.data[2], &detection_data, DETECTION_ARRAY_SIZE);
+          memcpy(&p_reply.data[DETECTON_DATA_START], &detection_data, DETECTION_DATA_SIZE);
+
+          //Copy pos
+          memcpy(&p_reply.data[DETECTON_DATA_START + DETECTION_DATA_SIZE], &pos.x, FLOAT_SIZE);
+          memcpy(&p_reply.data[DETECTON_DATA_START + DETECTION_DATA_SIZE + FLOAT_SIZE], &pos.y, FLOAT_SIZE);
+          memcpy(&p_reply.data[DETECTON_DATA_START + DETECTION_DATA_SIZE + FLOAT_SIZE * 2], &pos.z, FLOAT_SIZE);
+
+          unsigned char class;
+          memcpy(&class, &detection_data[0], sizeof(class));
+
+          float confidence;
+          memcpy(&confidence, &detection_data[sizeof(unsigned char )], sizeof(float));
+
+          DEBUG_PRINT("[STM32 Broadcast] Class: %d, Confidence: %.3f Pos: %.3f, %.3f, %.3f\n",
+            class,
+            (double)confidence,
+            (double)pos.x,
+            (double)pos.y,
+            (double)pos.z
+          );
+
+          //Reset detection to invalid and wait for next message from AI deck
           detection_data[0] = DETECTION_INVALID;
         }
 
         xSemaphoreGive(detection_mutex); //unlock detection_mutex
 
-        p_reply.size = send_detection ? 5 + DETECTION_ARRAY_SIZE : 5;
+        p_reply.size = send_detection ? 5 + DETECTION_DATA_SIZE + POS_SIZE : 5;
 
         radiolinkSendP2PPacketBroadcast(&p_reply);
 
@@ -748,29 +793,6 @@ void p2pcallbackHandler(P2PPacket *p)
 
 
 
-}
-
-static void cpxPacketCallback(const CPXPacket_t* cpxRx)
-{
-  xSemaphoreTake(detection_mutex, 0);
-  memcpy(&detection_data, &cpxRx->data, DETECTION_ARRAY_SIZE);
-  xSemaphoreGive(detection_mutex);
-
-  // int x, y, w, h, score;
-
-  // memcpy(&x, &cpxRx->data[INT_SIZE * DATA_INDEX_X], INT_SIZE);
-  // memcpy(&y, &cpxRx->data[INT_SIZE * DATA_INDEX_Y], INT_SIZE);
-  // memcpy(&w, &cpxRx->data[INT_SIZE * DATA_INDEX_W], INT_SIZE);
-  // memcpy(&h, &cpxRx->data[INT_SIZE * DATA_INDEX_H], INT_SIZE);
-  // memcpy(&score, &cpxRx->data[INT_SIZE * DATA_INDEX_SCORE], INT_SIZE);
-
-  // DEBUG_PRINT("[STM32 Recv] \t X: %d, Y: %d, W: %d, H: %d, Score: %d\n",
-  //   x,
-  //   y,
-  //   w,
-  //   h,
-  //   score
-  // );
 }
 
 PARAM_GROUP_START(statemach)
