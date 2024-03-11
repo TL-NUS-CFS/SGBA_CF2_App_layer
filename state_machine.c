@@ -322,6 +322,12 @@ void appMain(void *param)
     DEBUG_PRINT("state_machine: rssi of closest = %i\n", (int)rssi_array_other_drones[id_inter_closest]);
     DEBUG_PRINT("state_machine: rssi_inter_filtered = %i\n", (int)rssi_inter_filtered);*/
 
+    //check battery level
+    // varid = logGetVarId("pm", "vbat");
+    // const float batteryVoltage = logGetFloat(varid);
+    // DEBUG_PRINT("Battery: %.3f\n", (double)batteryVoltage); //Don't print unless needed
+    // Sample output: Battery: 3.858
+    //TODO: Execute some on-board logic based on some very low voltage cutoff (e.g. land when <=3.2v - need to find the right value)
 
     //checking init of multiranger and flowdeck
     paramid = paramGetVarId("deck", "bcMultiranger");
