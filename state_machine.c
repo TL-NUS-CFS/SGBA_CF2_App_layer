@@ -679,7 +679,7 @@ bool priority = true;
           memcpy(&class, &detection_data[0], sizeof(class));
 
           float confidence;
-          memcpy(&confidence, &detection_data[sizeof(unsigned char )], sizeof(float));
+          memcpy(&confidence, &detection_data[sizeof(uint8_t)], sizeof(float));
 
           DEBUG_PRINT("[STM32 Broadcast] Class: %d, Confidence: %.3f Pos: %.3f, %.3f, %.3f\n",
             class,
