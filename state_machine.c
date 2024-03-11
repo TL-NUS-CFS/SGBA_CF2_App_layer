@@ -653,7 +653,8 @@ bool priority = true;
 
     //Test broadcast?
     static const bool testBroadcast = true;
-    if (testBroadcast || ((usecTimestamp() >= radioSendBroadcastTime + 1000*500) && (is_flying == true))) {
+    if ((usecTimestamp() >= radioSendBroadcastTime + 1000*500) && (is_flying == true || testBroadcast))
+    {
         xSemaphoreTake(detection_mutex, 0); //lock detection_mutex
 
         const bool send_detection = detection_data[0] != DETECTION_INVALID;
