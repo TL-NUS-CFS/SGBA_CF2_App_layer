@@ -458,14 +458,7 @@ void appMain(void *param)
           priority = false;
         }
 
-        // float drone_dist_from_wall;
-        // if (my_id % 2 == 1) {
-        //   drone_dist_from_wall = drone_dist_from_wall_1;
-        // }
-        // else {
-        //   drone_dist_from_wall = drone_dist_from_wall_2;
-        // }
-
+        rssi_inter_filtered = 140;
         //TODO make outbound depended on battery.
         state = SGBA_controller(&vel_x_cmd, &vel_y_cmd, &vel_w_cmd, &rssi_angle, &state_wf, front_range,
                                              left_range, right_range, back_range, heading_rad,
@@ -686,7 +679,7 @@ void p2pcallbackHandler(P2PPacket *p)
     }
     else{
         rssi_inter = p->rssi;
-        DEBUG_PRINT("state_machine: Received RSSI is %i\n", rssi_inter);
+        // DEBUG_PRINT("state_machine: Received RSSI is %i\n", rssi_inter);
         memcpy(&rssi_angle_inter_ext, &p->data[1], sizeof(float));
 
         rssi_array_other_drones[id_inter_ext] = rssi_inter;

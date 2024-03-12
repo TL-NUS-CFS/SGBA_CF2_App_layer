@@ -236,9 +236,15 @@ int SGBA_controller(float *vel_x, float *vel_y, float *vel_w, float *rssi_angle,
   /***********************************************************
    * Handle state transitions
    ***********************************************************/
+  DEBUG_PRINT("front=%f, ", (double)front_range);
+  DEBUG_PRINT("left=%f, ", (double)left_range);
+  DEBUG_PRINT("right=%f\n", (double)right_range);
+  
 
   if (state == 1) {     //FORWARD
-    if (front_range < ref_distance_from_wall + 0.2f) {
+    DEBUG_PRINT("SGBA_FORWARD\n");
+    if (front_range < ref_distance_from_wall + drone_dist_from_wall_to_start_margin) {
+
 // if looping is detected, reverse direction (only on outbound)
       if (overwrite_and_reverse_direction) {
         direction = -1.0f * direction;
@@ -267,21 +273,28 @@ int SGBA_controller(float *vel_x, float *vel_y, float *vel_w, float *rssi_angle,
 
       state = transition(3); //wall_following
 
+      DEBUG_PRINT("SGBA_FORWARD: state 1 to 3\n");
     }
+
   } else if (state == 2) { //ROTATE_TO_GOAL
+    DEBUG_PRINT("SGBA_ROTATE_TO_GOAL\n");
     // check if heading is close to the preferred_angle
     bool goal_check = logicIsCloseTo(wraptopi(current_heading - wanted_angle), 0, 0.1f);
-    if (front_range < ref_distance_from_wall + 0.2f) {
+    if (front_range < ref_distance_from_wall + drone_dist_from_wall_to_start_margin) {
       cannot_go_to_goal =  true;
       wall_follower_init(drone_dist_from_wall, drone_speed, 3);
 
       state = transition(3); //wall_following
-
+      DEBUG_PRINT("SGBA_ROTATE_TO_GOAL: state 2 to 3\n");
     }
     if (goal_check) {
       state = transition(1); //forward
+      DEBUG_PRINT("SGBA_ROTATE_TO_GOAL: state 2 to 1\n");
     }
+
   } else if (state == 3) {      //WALL_FOLLOWING
+    DEBUG_PRINT("SGBA_WALL_FOLLOWING\n");
+
     // if another drone is close and there is no right of way, move out of the way
     if (priority == false && rssi_inter < rssi_collision_threshold) {
       if (outbound) {

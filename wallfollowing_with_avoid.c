@@ -69,7 +69,7 @@ int wall_follower_and_avoid_controller(float *vel_x, float *vel_y, float *vel_w,
      ***********************************************************/
     if (state == 1) {     //FORWARD
         // if front range is close, start wallfollowing
-        if (front_range < ref_distance_from_wall + 0.2f) {
+        if (front_range < ref_distance_from_wall + drone_dist_from_wall_to_start_margin) {
             wall_follower_init(ref_distance_from_wall, max_speed, 3);
             state = transition(2); //wall_following
         }
