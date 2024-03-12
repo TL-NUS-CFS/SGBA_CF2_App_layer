@@ -12,7 +12,7 @@
 #include "drone_variables.h"
 
 int wall_follower(float *vel_x, float *vel_y, float *vel_w, float front_range, float side_range, float current_heading,
-                  int direction_turn, bool CA_mode);
+                  int direction_turn);
 
 void adjustDistanceWall(float distance_wall_new);
 

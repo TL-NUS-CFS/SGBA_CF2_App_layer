@@ -143,7 +143,7 @@ void adjustDistanceWall(float distance_wall_new)
 }
 
 int wall_follower(float *vel_x, float *vel_y, float *vel_w, float front_range, float side_range, float current_heading,
-                  int direction_turn, bool CA_mode)
+                  int direction_turn)
 {
 
 
@@ -152,12 +152,6 @@ int wall_follower(float *vel_x, float *vel_y, float *vel_w, float front_range, f
   static float angle = 0;
   static bool around_corner_go_back = false;
   float now = usecTimestamp() / 1e6;
-
-  if (CA_mode == true) {
-    ref_distance_from_wall = drone_dist_from_wall_2;
-  } else {
-    ref_distance_from_wall = drone_dist_from_wall_1;
-  }
 
   if (first_run) {
     previous_heading = current_heading;
