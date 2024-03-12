@@ -54,7 +54,7 @@ static bool taken_off = false;
 //2=wall following with avoid: This also follows walls but will move away if another crazyflie with an lower ID is coming close, 
 //3=SGBA: The SGBA method that incorperates the above methods.
 //        NOTE: the switching between outbound and inbound has not been implemented yet
-#define METHOD 2
+#define METHOD 3
 
 
 void p2pcallbackHandler(P2PPacket *p);
