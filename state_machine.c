@@ -44,7 +44,7 @@
 static bool keep_flying = false;
 static bool is_flying = false;
 static bool move_away_from_walls = false;
-const float MIN_DISTANCE = 1.5; // m
+const float MIN_DISTANCE = 1.0; // m
 
 float height;
 
@@ -410,7 +410,7 @@ void appMain(void *param)
 
 */
 
-
+    //DEBUG_PRINT("Timestamp %llu\n",usecTimestamp());
 
 
     // Main flying code
@@ -603,25 +603,55 @@ bool priority = true;
          *  but the crazyflie  has already taken off
          *   then land
          */
-        
         if (move_away_from_walls) {
         DEBUG_PRINT("MOVE AWAY FROM WALLS AND LAND \n");
         
           const float VELOCITY = 0.1; 
           vel_x_cmd = 0; vel_y_cmd = 0;
+          const float threshold = 1.1;
+          const float buffer1 = 0.2;
+          const float buffer2 = 0.15;
+
+
+          // if (front_range < threshold + buffer1) {
+          //   DEBUG_PRINT("FRONT %.2f < THRESHOLD %.2f \n", (double)front_range, (double)(threshold + buffer1));
+          //   if (front_range < threshold) {
+          //     vel_x_cmd -= VELOCITY;
+          //   } else {
+          //     vel_x_cmd += VELOCITY;
+          //   }
+          //   if (front_range > threshold && front_range < threshold + buffer2){
+          //     move_away_from_walls = false;
+          //     DEBUG_PRINT("Finish Moving Away\n");
+          //   }
+          // }
+          if (left_range + right_range < 2*threshold + buffer1) {
+            DEBUG_PRINT("LEFT AND RIGHT < THRESHOLD \n");
+            if (left_range < threshold) {
+              vel_y_cmd -= VELOCITY;
+            } else {
+              vel_y_cmd += VELOCITY;
+            }
+            if (left_range > threshold && left_range < threshold + buffer2){
+              move_away_from_walls = false;
+              DEBUG_PRINT("Finish Moving Away\n");
+            }
+          }
+
+
 
           // check multiranger distance
-          if (is_close(front_range) || is_close(back_range) || is_close(left_range) || is_close(right_range)) {
+          else if (is_close(front_range) || is_close(left_range) || is_close(right_range)) { //|| is_close(back_range) 
             DEBUG_PRINT("if \n");
            
             if (is_close(front_range)) {
                 DEBUG_PRINT("Move Backwards\n");
                 vel_x_cmd -= VELOCITY;
             }
-            if (is_close(back_range)) {
-                DEBUG_PRINT("Move Forward\n");
-                vel_x_cmd += VELOCITY;
-            }
+            // if (is_close(back_range)) {
+            //     DEBUG_PRINT("Move Forward\n");
+            //     vel_x_cmd += VELOCITY;
+            // }
             if (is_close(left_range)) {
                 DEBUG_PRINT("Move Right\n");
                 vel_y_cmd -= VELOCITY;
