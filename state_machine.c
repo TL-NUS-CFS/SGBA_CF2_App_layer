@@ -43,7 +43,8 @@
 
 static bool keep_flying = false;
 static bool is_flying = false;
-
+static bool move_away_from_walls = false;
+const float MIN_DISTANCE = 1.0; // m
 
 float height;
 
@@ -54,7 +55,7 @@ static bool taken_off = false;
 //2=wall following with avoid: This also follows walls but will move away if another crazyflie with an lower ID is coming close, 
 //3=SGBA: The SGBA method that incorperates the above methods.
 //        NOTE: the switching between outbound and inbound has not been implemented yet
-#define METHOD 3
+#define METHOD 2
 
 
 void p2pcallbackHandler(P2PPacket *p);
@@ -78,6 +79,7 @@ static float up_range;
 static float back_range;
 static float rssi_angle;
 static int state;
+
 
 #if METHOD == 3
 static int state_wf;
@@ -189,6 +191,11 @@ static int32_t find_minimum(uint8_t a[], int32_t n)
     return (number);
 
 }*/
+
+bool is_close(float range) {
+  return range < MIN_DISTANCE; // still too close to wall 
+}
+
 void appMain(void *param)
 {
   static struct MedianFilterFloat medFilt;
@@ -419,7 +426,7 @@ void appMain(void *param)
 
 */
 
-
+    //DEBUG_PRINT("Timestamp %llu\n",usecTimestamp());
 
 
     // Main flying code
@@ -579,19 +586,96 @@ bool priority = true;
           }
 
       }
-    } else {
+    } else { //keep_flying == false
       if (taken_off) {
         /*
          * If the flight is given a not OK
          *  but the crazyflie  has already taken off
          *   then land
          */
-        land(&setpoint_BG, 0.2f);
-        if (height < 0.1f) {
-          shut_off_engines(&setpoint_BG);
-          taken_off = false;
+        if (move_away_from_walls) {
+        DEBUG_PRINT("MOVE AWAY FROM WALLS AND LAND \n");
+        
+          const float VELOCITY = 0.1; 
+          vel_x_cmd = 0; vel_y_cmd = 0;
+          const float threshold = 1.1;
+          const float buffer1 = 0.2;
+          const float buffer2 = 0.15;
+
+
+          // if (front_range < threshold + buffer1) {
+          //   DEBUG_PRINT("FRONT %.2f < THRESHOLD %.2f \n", (double)front_range, (double)(threshold + buffer1));
+          //   if (front_range < threshold) {
+          //     vel_x_cmd -= VELOCITY;
+          //   } else {
+          //     vel_x_cmd += VELOCITY;
+          //   }
+          //   if (front_range > threshold && front_range < threshold + buffer2){
+          //     move_away_from_walls = false;
+          //     DEBUG_PRINT("Finish Moving Away\n");
+          //   }
+          // }
+          if (left_range + right_range < 2*threshold + buffer1) {
+            DEBUG_PRINT("LEFT AND RIGHT < THRESHOLD \n");
+            if (left_range < threshold) {
+              vel_y_cmd -= VELOCITY;
+            } else {
+              vel_y_cmd += VELOCITY;
+            }
+            if (left_range > threshold && left_range < threshold + buffer2){
+              move_away_from_walls = false;
+              DEBUG_PRINT("Finish Moving Away\n");
+            }
+          }
+
+
+
+          // check multiranger distance
+          else if (is_close(front_range) || is_close(left_range) || is_close(right_range)) { //|| is_close(back_range) 
+            DEBUG_PRINT("if \n");
+           
+            if (is_close(front_range)) {
+                DEBUG_PRINT("Move Backwards\n");
+                vel_x_cmd -= VELOCITY;
+            }
+            // if (is_close(back_range)) {
+            //     DEBUG_PRINT("Move Forward\n");
+            //     vel_x_cmd += VELOCITY;
+            // }
+            if (is_close(left_range)) {
+                DEBUG_PRINT("Move Right\n");
+                vel_y_cmd -= VELOCITY;
+            }
+            if (is_close(right_range)) {
+                DEBUG_PRINT("Move Left\n");
+                vel_y_cmd += VELOCITY;
+            }
+          }
+
+          else{
+            move_away_from_walls = false;
+            DEBUG_PRINT("Finish moving away\n");
+          }
+          
+          float vel_w_cmd_convert = vel_w_cmd * 180.0f / (float)M_PI;
+          vel_command(&setpoint_BG, vel_x_cmd, vel_y_cmd, vel_w_cmd_convert, nominal_height);
         }
-        on_the_ground = false;
+  
+         
+
+      
+        else //original land logic
+        {
+          DEBUG_PRINT("LANDING\n");
+          land(&setpoint_BG, 0.2f);
+          if (height < 0.1f) {
+            shut_off_engines(&setpoint_BG);
+            taken_off = false;
+          }
+          on_the_ground = false;
+        } //else original land topic
+      
+
 
       } else {
 
@@ -645,7 +729,15 @@ void p2pcallbackHandler(P2PPacket *p)
         //if 3rd byte of packet = 0xff or = drone's ID
         if (p->data[2] == 0xff || p->data[2] == my_id) 
         {
-         keep_flying =  p->data[1]; 
+         if (p->data[1] == 0 || p->data[1] == 1)
+         {
+          keep_flying =  p->data[1];
+         }
+         else if (p->data[1] == 2)
+         {
+          keep_flying = false;
+          move_away_from_walls = true;
+         }
         }
 
         // if (p->data[2] == my_id){
