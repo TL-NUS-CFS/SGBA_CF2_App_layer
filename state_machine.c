@@ -30,6 +30,7 @@
 #include "SGBA.h"
 #include "usec_time.h"
 
+#include "drone_variables.h"
 
 #include "range.h"
 #include "radiolink.h"
@@ -326,20 +327,20 @@ void appMain(void *param)
       up_range = (float)rangeGet(rangeUp) / 1000.0f;
     }
 
-    if (front_range > 4.0f) {
-      front_range = 4.0f;
+    if (front_range > range_limit) {
+      front_range = range_limit;
     }
-    if (right_range > 4.0f) {
-      right_range = 4.0f;
+    if (right_range > range_limit) {
+      right_range = range_limit;
     }
-    if (left_range > 4.0f) {
-      left_range = 4.0f;
+    if (left_range > range_limit) {
+      left_range = range_limit;
     }
-    if(back_range > 4.0f) {
-      back_range = 4.0f;
+    if(back_range > range_limit) {
+      back_range = range_limit;
     }
-    if (up_range > 4.0f) {
-      up_range = 4.0f;
+    if (up_range > range_limit) {
+      up_range = range_limit;
     } 
 
 
@@ -632,7 +633,7 @@ bool priority = true;
 
           // check multiranger distance
           else if (is_close(front_range) || is_close(left_range) || is_close(right_range)) { //|| is_close(back_range) 
-            DEBUG_PRINT("if \n");
+            DEBUG_PRINT("------ \n");
            
             if (is_close(front_range)) {
                 DEBUG_PRINT("Move Backwards\n");
