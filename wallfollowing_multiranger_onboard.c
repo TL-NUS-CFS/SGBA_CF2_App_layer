@@ -11,8 +11,6 @@
 #include "usec_time.h"
 #include "debug.h"
 
-#include "debug.h"
-
 // variables
 static float ref_distance_from_wall = 0;
 static float max_speed = 0.5;
@@ -178,9 +176,8 @@ int wall_follower(float *vel_x, float *vel_y, float *vel_w, float front_range, f
   /***********************************************************
   * Handle state transitions
   ***********************************************************/
- DEBUG_PRINT("side_range: %f\n", (double)side_range);
+
   if (state == 1) {     //FORWARD
-<<<<<<< Updated upstream
     DEBUG_PRINT("FORWARD | ");
     if (front_range < ref_distance_from_wall + drone_dist_from_wall_to_start_margin) {
       DEBUG_PRINT("TRANSITION TO TURN_TO_FIND_WALL | ");
@@ -189,69 +186,35 @@ int wall_follower(float *vel_x, float *vel_y, float *vel_w, float front_range, f
   } else if (state == 2) {  // HOVER
     DEBUG_PRINT("HOVER | ");
 
-=======
-    DEBUG_PRINT("multiranger_onboard: FORWARD\n");
-    if (front_range < ref_distance_from_wall + 0.2f) {
-      state = transition(3);
-    }
-  } else if (state == 2) {  // HOVER
-    DEBUG_PRINT("multiranger_onboard: HOVER\n");
->>>>>>> Stashed changes
   } else if (state == 3) { // TURN_TO_FIND_WALL
     DEBUG_PRINT("TURN_TO_FIND_WALL | ");
     // check if wall is found
-<<<<<<< Updated upstream
     bool side_range_check = side_range < ref_distance_from_wall / (float)cos(0.78f) + drone_dist_from_wall_to_start_margin;
     bool front_range_check = front_range < ref_distance_from_wall / (float)cos(0.78f) + drone_dist_from_wall_to_start_margin;
-=======
-    DEBUG_PRINT("multiranger_onboard: TURN_TO_FIND_WALL\n");
-    bool side_range_check = side_range < ref_distance_from_wall / (float)cos(0.78f) + 0.2f;
-    bool front_range_check = front_range < ref_distance_from_wall / (float)cos(0.78f) + 0.2f;
->>>>>>> Stashed changes
     if (side_range_check && front_range_check) {
       previous_heading = current_heading;
       angle = direction * (1.57f - (float)atan(front_range / side_range) + 0.1f);
       DEBUG_PRINT("TRANSITION TO TURN_TO_ALIGN_TO_WALL | ");
       state = transition(4); // go to turn_to_align_to_wall
     }
-<<<<<<< Updated upstream
     if (side_range < (ref_distance_from_wall + drone_dist_from_wall_corner_margin) && front_range > (3 * ref_distance_from_wall)) {
-=======
-    else if (side_range < 1.0f && front_range > 2.0f) {
->>>>>>> Stashed changes
       //  around_corner_first_turn = true;
       around_corner_go_back = false;
       previous_heading = current_heading;
       DEBUG_PRINT("TRANSITION TO FIND_CORNER | ");
       state = transition(8); // go to rotate_around_wall
-<<<<<<< Updated upstream
     }
   } else if (state == 4) { //TURN_TO_ALIGN_TO_WALL
     DEBUG_PRINT("TURN_TO_ALIGN_TO_WALL | ");
     bool align_wall_check = logicIsCloseTo(wraptopi(current_heading - previous_heading), angle, 0.1f);
     if (align_wall_check) {
-=======
-    } 
-    // else if (front_range >= range_limit && side_range >= range_limit) {
-    //   state = transition(1);
-    //   DEBUG_PRINT("multiranger_onboard: from TURN_TO_FIND_WALL to FORWARD\n");
-    // }
-  } else if (state == 4) { //TURN_TO_ALLIGN_TO_WALL
-    DEBUG_PRINT("multiranger_onboard: TURN_TO_ALLIGN_TO_WALL\n");
-    bool allign_wall_check = logicIsCloseTo(wraptopi(current_heading - previous_heading), angle, 0.1f);
-    if (allign_wall_check) {
->>>>>>> Stashed changes
       // prev_side_range = side_range;
       DEBUG_PRINT("TRANSITION TO FORWARD_ALONG_WALL | ");
       state = transition(5);
     }
   } else if (state == 5) {  //FORWARD_ALONG_WALL
-<<<<<<< Updated upstream
     DEBUG_PRINT("FORWARD_ALONG_WALL | ");
 
-=======
-    DEBUG_PRINT("multiranger_onboard: FORWARD_ALONG_WALL\n");
->>>>>>> Stashed changes
     // If side range is out of reach,
     //    end of the wall is reached
     if (side_range > ref_distance_from_wall + drone_dist_from_wall_corner_margin) {
@@ -268,39 +231,24 @@ int wall_follower(float *vel_x, float *vel_y, float *vel_w, float front_range, f
     }
 
   } else if (state == 6) {  //ROTATE_AROUND_WALL
-<<<<<<< Updated upstream
     DEBUG_PRINT("ROTATE_AROUND_WALL | ");
     if (front_range < ref_distance_from_wall + drone_dist_from_wall_to_start_margin) {
       DEBUG_PRINT("TRANSITION TO TURN_TO_FIND_WALL | ");
-=======
-    DEBUG_PRINT("multiranger_onboard: ROTATE_AROUND_WALL\n");
-    if (front_range < ref_distance_from_wall + 0.2f) {
->>>>>>> Stashed changes
       state = transition(3);
     }
 
 
   } else if (state == 7) {   //ROTATE_IN_CORNER
-<<<<<<< Updated upstream
     DEBUG_PRINT("ROTATE_IN_CORNER | ");
     // Check if heading goes over 0.8 rad (drone heading threshold)
     bool check_heading_corner = logicIsCloseTo(fabs(wraptopi(current_heading - previous_heading)), drone_heading_threshold, 0.1f);
-=======
-    DEBUG_PRINT("multiranger_onboard: ROTATE_IN_CORNER\n");
-    // Check if heading goes over 0.8 rad
-    bool check_heading_corner = logicIsCloseTo(fabs(wraptopi(current_heading - previous_heading)), 0.8f, 0.1f);
->>>>>>> Stashed changes
     if (check_heading_corner) {
       DEBUG_PRINT("TRANSITION TO TURN_TO_FIND_WALL | ");
       state = transition(3);
     }
 
   } else if (state == 8) {   //FIND_CORNER
-<<<<<<< Updated upstream
     DEBUG_PRINT("FIND_CORNER | ");
-=======
-    DEBUG_PRINT("multiranger_onboard: FIND_CORNER\n");
->>>>>>> Stashed changes
     if (side_range <= ref_distance_from_wall) {
       DEBUG_PRINT("TRANSITION TO ROTATE_AROUND_WALL | ");
       state = transition(6);

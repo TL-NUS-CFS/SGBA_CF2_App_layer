@@ -2,7 +2,6 @@
 
 #include "drone_variables.h"
 
-<<<<<<< Updated upstream
 // WALL FOLLOWING: DRONE DIST FROM WALL VARIABLES
 float drone_dist_from_wall_1 = 0.9; //0.6; // following on the left side of the wall
 float drone_dist_from_wall_2 = 1.3; //1.2; // following on the right side of the wall
@@ -10,12 +9,6 @@ float drone_dist_from_wall_corner_margin = 0.2; //0.3; // error margin for turni
 float drone_dist_from_wall_forward_margin = 0.05; //0.1; // error margin for going forward along wall
 float drone_dist_from_wall_to_start_margin = 0.2; // error margin for transitions (forward/corner)
 float drone_heading_threshold = 0.8; // in rad / Check if drone heading goes over 0.8 rad
-=======
-float drone_dist_from_wall_1 = 0.6;
-float drone_dist_from_wall_2 = 0.8;
-float drone_speed = 0.2;
-float range_limit = 4.0f;
->>>>>>> Stashed changes
 
 // WALL FOLLOWING: DRONE SPEED VARIABLES
 float drone_speed = 0.3; //0.2; default drone speed

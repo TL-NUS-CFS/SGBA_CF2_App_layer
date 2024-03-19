@@ -6,7 +6,6 @@
 extern float drone_dist_from_wall_1;
 extern float drone_dist_from_wall_2;
 extern float drone_speed;
-<<<<<<< Updated upstream
 extern float drone_heading_threshold;
 
 extern float drone_dist_from_wall_corner_margin;
@@ -15,9 +14,6 @@ extern float drone_dist_from_wall_forward_margin;
 extern int drone_speed_forward_adjust_scale;
 extern float drone_dist_from_wall_to_start_margin;
 
-=======
-extern float range_limit;
->>>>>>> Stashed changes
 extern int rssi_collision_threshold;
 extern float rssi_reset_interval;
 extern float nominal_height;
