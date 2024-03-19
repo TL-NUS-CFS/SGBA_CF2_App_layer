@@ -30,7 +30,6 @@
 #include "SGBA.h"
 #include "usec_time.h"
 
-
 #include "range.h"
 #include "radiolink.h"
 #include "median_filter.h"
@@ -326,20 +325,20 @@ void appMain(void *param)
       up_range = (float)rangeGet(rangeUp) / 1000.0f;
     }
 
-    if (front_range > 4.0f) {
-      front_range = 4.0f;
+    if (front_range > ranger_limit) {
+      front_range = ranger_limit;
     }
-    if (right_range > 4.0f) {
-      right_range = 4.0f;
+    if (right_range > ranger_limit) {
+      right_range = ranger_limit;
     }
-    if (left_range > 4.0f) {
-      left_range = 4.0f;
+    if (left_range > ranger_limit) {
+      left_range = ranger_limit;
     }
-    if(back_range > 4.0f) {
-      back_range = 4.0f;
+    if(back_range > ranger_limit) {
+      back_range = ranger_limit;
     }
-    if (up_range > 4.0f) {
-      up_range = 4.0f;
+    if (up_range > ranger_limit) {
+      up_range = ranger_limit;
     } 
 
 
@@ -484,7 +483,6 @@ bool priority = true;
           drone_dist_from_wall = drone_dist_from_wall_2;
         }
 
-        rssi_inter_filtered = 140;
         //TODO make outbound depended on battery.
         state = SGBA_controller(&vel_x_cmd, &vel_y_cmd, &vel_w_cmd, &rssi_angle, &state_wf, front_range,
                                              left_range, right_range, back_range, heading_rad,
@@ -560,18 +558,13 @@ bool priority = true;
           //   init_SGBA_controller(drone_dist_from_wall_2, drone_speed, heading, 1);
           // }
 
+          static float heading = 0.0f;
           // static float heading[15] = { -69.0f, -48.0f, -27.0f, -6.0f, 15.0f, 36.0f, 57.0f, 78.0f, -66.0f, -42.0f, -18.0f, 6.0f, 30.0f, 54.0f, 78.0f};
-          // DEBUG_PRINT("heading = %.2f\n", (double)heading[my_id_dec - 1]);
-          // if (my_id_dec % 2 == 1) {
-          //   init_SGBA_controller(drone_dist_from_wall_1, drone_speed, heading[my_id_dec - 1], -1);
-          // } else {
-          //   init_SGBA_controller(drone_dist_from_wall_2, drone_speed, heading[my_id_dec - 1], 1);
-          // }
-
+          DEBUG_PRINT("heading = %.2f\n", (double)heading);
           if (my_id_dec % 2 == 1) {
-            init_SGBA_controller(drone_dist_from_wall_1, drone_speed, 0, -1);
+            init_SGBA_controller(drone_dist_from_wall_1, drone_speed, heading, -1);
           } else {
-            init_SGBA_controller(drone_dist_from_wall_2, drone_speed, 0, 1);
+            init_SGBA_controller(drone_dist_from_wall_2, drone_speed, heading, 1);
           }
           
 
@@ -632,7 +625,7 @@ bool priority = true;
 
           // check multiranger distance
           else if (is_close(front_range) || is_close(left_range) || is_close(right_range)) { //|| is_close(back_range) 
-            DEBUG_PRINT("if \n");
+            DEBUG_PRINT("------ \n");
            
             if (is_close(front_range)) {
                 DEBUG_PRINT("Move Backwards\n");
@@ -754,7 +747,7 @@ void p2pcallbackHandler(P2PPacket *p)
     }
     else{
         rssi_inter = p->rssi;
-        // DEBUG_PRINT("state_machine: Received RSSI is %i\n", rssi_inter);
+        DEBUG_PRINT("state_machine: Received RSSI is %i\n", rssi_inter);
         memcpy(&rssi_angle_inter_ext, &p->data[1], sizeof(float));
 
         rssi_array_other_drones[id_inter_ext] = rssi_inter;

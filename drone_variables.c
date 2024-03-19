@@ -10,6 +10,8 @@ float drone_dist_from_wall_forward_margin = 0.05; //0.1; // error margin for goi
 float drone_dist_from_wall_to_start_margin = 0.2; // error margin for transitions (forward/corner)
 float drone_heading_threshold = 0.8; // in rad / Check if drone heading goes over 0.8 rad
 
+float ranger_limit = 4.0f;
+
 // WALL FOLLOWING: DRONE SPEED VARIABLES
 float drone_speed = 0.3; //0.2; default drone speed
 int drone_speed_corner_scale = 2; //3; // scale down for turning around corner

@@ -351,12 +351,25 @@ int SGBA_controller(float *vel_x, float *vel_y, float *vel_w, float *rssi_angle,
     } else {
     }
 
+
     // if during wallfollowing, agent goes around wall, and heading is close to rssi _angle
     //      got to rotate to goal
     if ((state_wf == 6 || state_wf == 8) && goal_check_WF && front_range > ref_distance_from_wall + 0.4f
         && !cannot_go_to_goal) {
       wanted_angle_dir = wraptopi(current_heading - wanted_angle); // to determine the direction when turning to goal
       state = transition(2); //rotate_to_goal
+    }
+
+    if (local_direction == -1) {
+      if (left_range >= ranger_limit && front_range >= ranger_limit) {
+        state = transition(2);
+        DEBUG_PRINT("WALL_FOLLOWING: state 3 to 2\n");
+      }
+    } else {
+      if (right_range >= ranger_limit && front_range >= ranger_limit) {
+        state = transition(2);
+        DEBUG_PRINT("WALL_FOLLOWING: state 3 to 2\n");
+      }
     }
 
     // If going straight

@@ -14,6 +14,8 @@ extern float drone_dist_from_wall_forward_margin;
 extern int drone_speed_forward_adjust_scale;
 extern float drone_dist_from_wall_to_start_margin;
 
+extern float ranger_limit;
+
 extern int rssi_collision_threshold;
 extern float rssi_reset_interval;
 extern float nominal_height;
