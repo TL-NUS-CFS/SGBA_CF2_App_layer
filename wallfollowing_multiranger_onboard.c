@@ -197,13 +197,14 @@ int wall_follower(float *vel_x, float *vel_y, float *vel_w, float front_range, f
       DEBUG_PRINT("TRANSITION TO TURN_TO_ALIGN_TO_WALL | ");
       state = transition(4); // go to turn_to_align_to_wall
     }
-    if (side_range < (ref_distance_from_wall + drone_dist_from_wall_corner_margin) && front_range > (3 * ref_distance_from_wall)) {
+    if (side_range < (ref_distance_from_wall + drone_dist_from_wall_corner_margin) && front_range > 2.0f) {
       //  around_corner_first_turn = true;
       around_corner_go_back = false;
       previous_heading = current_heading;
       DEBUG_PRINT("TRANSITION TO FIND_CORNER | ");
       state = transition(8); // go to rotate_around_wall
     }
+    
   } else if (state == 4) { //TURN_TO_ALIGN_TO_WALL
     DEBUG_PRINT("TURN_TO_ALIGN_TO_WALL | ");
     bool align_wall_check = logicIsCloseTo(wraptopi(current_heading - previous_heading), angle, 0.1f);
@@ -253,9 +254,7 @@ int wall_follower(float *vel_x, float *vel_y, float *vel_w, float front_range, f
       DEBUG_PRINT("TRANSITION TO ROTATE_AROUND_WALL | ");
       state = transition(6);
     }
-
   }
-
   else {
   }
 
