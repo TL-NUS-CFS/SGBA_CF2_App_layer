@@ -302,6 +302,7 @@ int SGBA_controller(float *vel_x, float *vel_y, float *vel_w, float *rssi_angle,
       if (loop_detected) {
         state = transition(2); //rotate_to_goal
         DEBUG_PRINT("SGBA_FORWARD: state 1 to 2\n");
+        loop_detected = false;
       }
     }
     DEBUG_PRINT("wanted_angle (forward)= %.2f\n", (double)wanted_angle);
