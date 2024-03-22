@@ -49,9 +49,9 @@ float height;
 
 static bool taken_off = false;
 
-// Switch to multiple methods, that increases in complexity 
-//1= wall_following: Go forward and follow walls with the multiranger 
-//2=wall following with avoid: This also follows walls but will move away if another crazyflie with an lower ID is coming close, 
+// Switch to multiple methods, that increases in complexity
+//1= wall_following: Go forward and follow walls with the multiranger
+//2=wall following with avoid: This also follows walls but will move away if another crazyflie with an lower ID is coming close,
 //3=SGBA: The SGBA method that incorperates the above methods.
 //        NOTE: the switching between outbound and inbound has not been implemented yet
 #define METHOD 2
@@ -192,7 +192,7 @@ static int32_t find_minimum(uint8_t a[], int32_t n)
 }*/
 
 bool is_close(float range) {
-  return range < MIN_DISTANCE; // still too close to wall 
+  return range < MIN_DISTANCE; // still too close to wall
 }
 
 void appMain(void *param)
@@ -246,7 +246,7 @@ void appMain(void *param)
 
       //if (usecTimestamp() >= time_array_other_drones[it] + 1000*1000*3) {
       if (currentTimestamp >= otherDroneTimestamp + cutoffTime) {
-      
+
         time_array_other_drones[it] = currentTimestamp + cutoffTime+1;
         rssi_array_other_drones[it] = 150;
         rssi_angle_array_other_drones[it] = 500.0f;
@@ -339,7 +339,7 @@ void appMain(void *param)
     }
     if (up_range > ranger_limit) {
       up_range = ranger_limit;
-    } 
+    }
 
 
     // Get position estimate of kalman filter
@@ -453,7 +453,7 @@ void appMain(void *param)
         // // RSSI CA FOR 2 DRONES //
         // if (id_inter_closest > my_id || (id_inter_closest % 2 == my_id % 2)) {
         //     rssi_inter_filtered = 140;
-            
+
         //     id_inter_closest = (uint8_t)find_minimum(rssi_array_other_drones, 40);
         // }
 
@@ -523,10 +523,15 @@ bool priority = true;
           wall_follower_init(drone_dist_from_wall, drone_speed, 1);
 #endif
 #if METHOD==2 // wallfollowing with avoid
-          if (my_id%2==1)
-          init_wall_follower_and_avoid_controller(drone_dist_from_wall_1, drone_speed, -1);
-          else
-          init_wall_follower_and_avoid_controller(drone_dist_from_wall_2, drone_speed, 1);
+          if (my_id == 3 && my_id == 7){
+            init_wall_follower_and_avoid_controller(drone_dist_from_wall_2, drone_speed, 1);
+          }
+
+          if (my_id == 1){
+            init_wall_follower_and_avoid_controller(1.5f, drone_speed, -1);
+          }
+          // else
+          // init_wall_follower_and_avoid_controller(drone_dist_from_wall_2, drone_speed, 1);
 
 #endif
 #if METHOD==3 // Swarm Gradient Bug Algorithm
@@ -538,7 +543,7 @@ bool priority = true;
             my_id_dec = my_id - 6;
           } else if (my_id > 19) {
             my_id_dec = my_id - 12;
-          } 
+          }
           DEBUG_PRINT("id = %i\n", my_id_dec);
 
           // Testing
@@ -566,7 +571,7 @@ bool priority = true;
           } else {
             init_SGBA_controller(drone_dist_from_wall_2, drone_speed, heading, 1);
           }
-          
+
 
 #endif
 
@@ -588,8 +593,8 @@ bool priority = true;
          */
         if (move_away_from_walls) {
         DEBUG_PRINT("MOVE AWAY FROM WALLS AND LAND \n");
-        
-          const float VELOCITY = 0.1; 
+
+          const float VELOCITY = 0.1;
           vel_x_cmd = 0; vel_y_cmd = 0;
           const float threshold = 1.1;
           const float buffer1 = 0.2;
@@ -624,9 +629,9 @@ bool priority = true;
 
 
           // check multiranger distance
-          else if (is_close(front_range) || is_close(left_range) || is_close(right_range)) { //|| is_close(back_range) 
+          else if (is_close(front_range) || is_close(left_range) || is_close(right_range)) { //|| is_close(back_range)
             DEBUG_PRINT("------ \n");
-           
+
             if (is_close(front_range)) {
                 DEBUG_PRINT("Move Backwards\n");
                 vel_x_cmd -= VELOCITY;
@@ -649,14 +654,14 @@ bool priority = true;
             move_away_from_walls = false;
             DEBUG_PRINT("Finish moving away\n");
           }
-          
+
           float vel_w_cmd_convert = vel_w_cmd * 180.0f / (float)M_PI;
           vel_command(&setpoint_BG, vel_x_cmd, vel_y_cmd, vel_w_cmd_convert, nominal_height);
         }
-  
-         
 
-      
+
+
+
         else //original land logic
         {
           DEBUG_PRINT("LANDING\n");
@@ -667,7 +672,7 @@ bool priority = true;
           }
           on_the_ground = false;
         } //else original land topic
-      
+
 
 
       } else {
@@ -716,11 +721,11 @@ void p2pcallbackHandler(P2PPacket *p)
     if (id_inter_ext == 0x63)
     {
         // get the drone's ID
-        uint64_t address = configblockGetRadioAddress(); 
-        uint8_t my_id =(uint8_t)((address) & 0x00000000ff); 
+        uint64_t address = configblockGetRadioAddress();
+        uint8_t my_id =(uint8_t)((address) & 0x00000000ff);
 
         //if 3rd byte of packet = 0xff or = drone's ID
-        if (p->data[2] == 0xff || p->data[2] == my_id) 
+        if (p->data[2] == 0xff || p->data[2] == my_id)
         {
          if (p->data[1] == 0 || p->data[1] == 1)
          {
@@ -734,14 +739,14 @@ void p2pcallbackHandler(P2PPacket *p)
         }
 
         // if (p->data[2] == my_id){
-        //   keep_flying = !keep_flying; 
+        //   keep_flying = !keep_flying;
         // }
         // else{
         //   keep_flying =  p->data[1];
         // }
 
 
-    }else if(id_inter_ext == 0x64){ 
+    }else if(id_inter_ext == 0x64){
         rssi_beacon =p->rssi;
 
     }
