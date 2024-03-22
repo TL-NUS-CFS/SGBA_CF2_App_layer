@@ -523,7 +523,7 @@ bool priority = true;
           wall_follower_init(drone_dist_from_wall, drone_speed, 1);
 #endif
 #if METHOD==2 // wallfollowing with avoid
-          if (my_id == 3 && my_id == 7){
+          if (my_id == 3 || my_id == 7){
             init_wall_follower_and_avoid_controller(drone_dist_from_wall_2, drone_speed, 1);
           }
 

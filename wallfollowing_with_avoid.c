@@ -75,12 +75,14 @@ int wall_follower_and_avoid_controller(float *vel_x, float *vel_y, float *vel_w,
      * Handle state transitions
      ***********************************************************/
     if (state == 1) {     //FORWARD
+        DEBUG_PRINT("forward_ref distance from wall: %f \n", (double)ref_distance_from_wall);
         // if front range is close, start wallfollowing
         if (front_range < ref_distance_from_wall + drone_dist_from_wall_to_start_margin) {
             wall_follower_init(ref_distance_from_wall, max_speed, 3);
             state = transition(2); //wall_following
         }
     } else if (state == 2) {      //WALL_FOLLOWING
+        DEBUG_PRINT("wf_ref distance from wall: %f \n", (double)ref_distance_from_wall);
         if (rssi_other_drone < rssi_collision_threshold) {
             state = transition(3);
         }
