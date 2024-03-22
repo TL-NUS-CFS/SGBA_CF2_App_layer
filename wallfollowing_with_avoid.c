@@ -21,6 +21,12 @@ static float ref_distance_from_wall = 0.5;
 static float max_speed = 0.5;
 static float local_direction = 1;
 
+static uint64_t wf3_start_time = 0;
+static bool first_time_state_wf_3 = true;
+static uint64_t wf3_current_time = 0;
+static uint64_t wf3_duration = 0;
+static uint64_t wf3_threshold = 1000 * 1000 * 18;
+
 
 static int transition(int new_state)
 {
@@ -46,6 +52,7 @@ int wall_follower_and_avoid_controller(float *vel_x, float *vel_y, float *vel_w,
 
     // Initalize static variables
     static int state = 1;
+    static int state_wf = 0;
 
     // if it is reinitialized
     if (first_run) {
@@ -77,6 +84,30 @@ int wall_follower_and_avoid_controller(float *vel_x, float *vel_y, float *vel_w,
         if (rssi_other_drone < rssi_collision_threshold) {
             state = transition(3);
         }
+
+        if(state_wf == 3) {
+            if (first_time_state_wf_3) {
+                wf3_start_time = usecTimestamp();
+                first_time_state_wf_3 = false;
+                DEBUG_PRINT("first_time_state_wf_3: %d ----------------------------------\n", first_time_state_wf_3);
+            }
+            wf3_current_time = usecTimestamp();
+            wf3_duration = wf3_current_time - wf3_start_time;
+            DEBUG_PRINT("wf3_start_time: %llu\n", wf3_start_time);
+            DEBUG_PRINT("wf3_current_time: %llu\n", wf3_current_time);
+            DEBUG_PRINT("wf3_duration: %llu\n", wf3_duration);
+            if (wf3_duration > wf3_threshold) {
+
+                DEBUG_PRINT("Time in State 3  > Threshold\n");
+                if (current_heading >= 0 && current_heading <= 0.1f) {
+                    state = transition(1);
+                    first_time_state_wf_3 = true;
+                }
+            }
+        }
+        else {
+            first_time_state_wf_3 = true;
+        }
     } else if (state == 3) { //MOVE_OUT_OF_WAY
         if (rssi_other_drone > rssi_collision_threshold) {
             state = transition(1);
@@ -100,9 +131,9 @@ int wall_follower_and_avoid_controller(float *vel_x, float *vel_y, float *vel_w,
         //Get the values from the wallfollowing
         // DEBUG_PRINT("wallfollow_w_avoid: STATE 2 WALLFOLLOWING\n");
         if (local_direction == 1) {
-            wall_follower(&temp_vel_x, &temp_vel_y, &temp_vel_w, front_range, right_range, current_heading, local_direction);
+            state_wf = wall_follower(&temp_vel_x, &temp_vel_y, &temp_vel_w, front_range, right_range, current_heading, local_direction);
         } else if (local_direction == -1) {
-            wall_follower(&temp_vel_x, &temp_vel_y, &temp_vel_w, front_range, left_range, current_heading, local_direction);
+            state_wf = wall_follower(&temp_vel_x, &temp_vel_y, &temp_vel_w, front_range, left_range, current_heading, local_direction);
         }
     } else if (state == 3) {       //MOVE_OUT_OF_WAY
 
