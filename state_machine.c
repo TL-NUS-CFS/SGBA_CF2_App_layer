@@ -5,7 +5,10 @@
  *      Author: knmcguire
  */
 
+////////
+#include "particle_swarm.h"
 
+///////
 #include <string.h>
 #include <errno.h>
 #define __USE_MISC
@@ -53,7 +56,7 @@ static bool taken_off = false;
 //1= wall_following: Go forward and follow walls with the multiranger 
 //2=wall following with avoid: This also follows walls but will move away if another crazyflie with an lower ID is coming close, 
 //3=SGBA: The SGBA method that incorperates the above methods.
-//        NOTE: the switching between outbound and inbound has not been implemented yet
+//1767=shuhui,particle_swarm        NOTE: the switching between outbound and inbound has not been implemented yet
 #define METHOD 2
 
 
@@ -439,7 +442,20 @@ void appMain(void *param)
     	  vel_w_cmd = 0;
         hover(&setpoint_BG, nominal_height);
         // DEBUG_PRINT("state_machine: Hover at nominal_height\n");
-
+//////////////////////////
+#if METHOD == 1767
+      state = particle_swarm_controller(
+    float vel_x_cmd,  //yes keep
+    float vel_y_cmd,  //yes keep
+    float vel_w_cmd,  //yes keep
+    float heading_rad, //keep
+    float right_range, //keep?
+    float front_range, //keep?
+    float left_range, //keep?
+    float back_range,  //keep?
+)
+#endif
+/////////////////////////
 #if METHOD == 1 //WALL_FOLLOWING
         // wall following state machine
         state = wall_follower(&vel_x_cmd, &vel_y_cmd, &vel_w_cmd, front_range, right_range, heading_rad, 1);
@@ -473,6 +489,7 @@ void appMain(void *param)
 
         }
 */
+// mission planning stuff need many drones
 bool priority = true;
 
         float drone_dist_from_wall;
@@ -517,8 +534,11 @@ bool priority = true;
               take_off(&setpoint_BG, nominal_height);
               if (height > nominal_height) {
                   taken_off = true;
-
-
+// void wall_follower_init(float new_ref_distance_from_wall, float max_speed_ref, int init_state)
+#if METHOD == 1769 // particle swarm
+          init_particle_swarm_controller( float velocity_x, float velocity_y, float velocity_z, float drone_position_x, float drone_position_y, float drone_position_z, float personal_best_value) 
+      init_particle_swarm_controller(drone_dist_from_wall)
+#endif
 #if METHOD==1 // wall following
           wall_follower_init(drone_dist_from_wall, drone_speed, 1);
 #endif
