@@ -3,8 +3,8 @@
 #include "drone_variables.h"
 
 // WALL FOLLOWING: DRONE DIST FROM WALL VARIABLES
-float drone_dist_from_wall_1 = 0.9; //0.6; // following on the left side of the wall
-float drone_dist_from_wall_2 = 1.3; //1.2; // following on the right side of the wall
+float drone_dist_from_wall_1 = 0.8; //0.6; // following on the left side of the wall
+float drone_dist_from_wall_2 = 0.4; //1.2; // following on the right side of the wall
 float drone_dist_from_wall_corner_margin = 0.2; //0.3; // error margin for turning around corner
 float drone_dist_from_wall_forward_margin = 0.05; //0.1; // error margin for going forward along wall
 float drone_dist_from_wall_to_start_margin = 0.2; // error margin for transitions (forward/corner)

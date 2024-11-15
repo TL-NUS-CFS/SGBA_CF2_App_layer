@@ -558,13 +558,16 @@ bool priority = true;
           //   init_SGBA_controller(drone_dist_from_wall_2, drone_speed, heading, 1);
           // }
 
-          static float heading = 0.0f;
+          // static float heading = 0.0f;
+          // static float heading[3] = { 0.0f, 0.0f, 0.0f };
+          static float heading[3] = { 60.0f, 0.0f, -60.0f };
           // static float heading[15] = { -69.0f, -48.0f, -27.0f, -6.0f, 15.0f, 36.0f, 57.0f, 78.0f, -66.0f, -42.0f, -18.0f, 6.0f, 30.0f, 54.0f, 78.0f};
-          DEBUG_PRINT("heading = %.2f\n", (double)heading);
+          // int index = robot_id % 3;
+          // DEBUG_PRINT("heading = %.2f\n", (double)heading);
           if (my_id_dec % 2 == 1) {
-            init_SGBA_controller(drone_dist_from_wall_1, drone_speed, heading, -1);
+            init_SGBA_controller(drone_dist_from_wall_1, drone_speed, heading[my_id-1], -1);
           } else {
-            init_SGBA_controller(drone_dist_from_wall_2, drone_speed, heading, 1);
+            init_SGBA_controller(drone_dist_from_wall_2, drone_speed, heading[my_id-1], 1);
           }
           
 
