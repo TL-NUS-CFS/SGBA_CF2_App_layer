@@ -663,7 +663,8 @@ bool priority = true;
         else //original land logic
         {
           DEBUG_PRINT("LANDING\n");
-          land(&setpoint_BG, 0.2f);
+          vTaskDelay(1800));
+          land(&setpoint_BG, 0.75f);
           if (height < 0.1f) {
             shut_off_engines(&setpoint_BG);
             taken_off = false;
