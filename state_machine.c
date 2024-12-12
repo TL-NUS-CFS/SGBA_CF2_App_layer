@@ -5,6 +5,7 @@
  *      Author: knmcguire
  */
 
+#include <time.h>
 
 #include <string.h>
 #include <errno.h>
@@ -78,7 +79,6 @@ static float up_range;
 static float back_range;
 static float rssi_angle;
 static int state;
-
 
 #if METHOD == 3
 static int state_wf;
@@ -220,9 +220,12 @@ void appMain(void *param)
 
 #if METHOD!=1
   static uint64_t radioSendBroadcastTime=0;
+  
 #endif
 
   static uint64_t takeoffdelaytime = 0;
+ 
+
 
   #if METHOD==3
   static bool outbound = true;
@@ -520,9 +523,11 @@ bool priority = true;
 
 
 #if METHOD==1 // wall following
+          DEBUG_PRINT("wall following\n");
           wall_follower_init(drone_dist_from_wall, drone_speed, 1);
 #endif
 #if METHOD==2 // wallfollowing with avoid
+          DEBUG_PRINT("wallfollowing with avoid\n");
           if (my_id%2==1)
           init_wall_follower_and_avoid_controller(drone_dist_from_wall_1, drone_speed, -1);
           else
@@ -530,6 +535,7 @@ bool priority = true;
 
 #endif
 #if METHOD==3 // Swarm Gradient Bug Algorithm
+          DEBUG_PRINT("SGBA initialise\n");
 
           // float angle_interval = (180.0f / (number_of_angles-1));
 
@@ -577,6 +583,9 @@ bool priority = true;
               }
           on_the_ground = false;
           }else{
+              // DEBUG_PRINT("Detection delay initialise\n");
+             
+             
               shut_off_engines(&setpoint_BG);
               taken_off = false;
           }
@@ -663,7 +672,11 @@ bool priority = true;
         else //original land logic
         {
           DEBUG_PRINT("LANDING\n");
-          land(&setpoint_BG, 0.2f);
+
+          vTaskDelay(1500);
+          land(&setpoint_BG, 0.075f);
+  
+
           if (height < 0.1f) {
             shut_off_engines(&setpoint_BG);
             taken_off = false;
@@ -682,7 +695,7 @@ bool priority = true;
          *   then keep engines off
          */
         shut_off_engines(&setpoint_BG);
-        takeoffdelaytime=usecTimestamp();
+        // takeoffdelaytime=usecTimestamp();
         on_the_ground = true;
       }
     }
